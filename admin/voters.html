@@ -42,6 +42,7 @@
         <div class="card-title">
           <span>Registered Voters</span>
           <span style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" id="refreshBtn" type="button">Refresh</button>
             <select class="input" id="roleFilter" style="width:auto;" aria-label="Filter by role">
               <option value="voter">Voters only</option>
               <option value="all">Everyone</option>
@@ -53,6 +54,7 @@
           </span>
         </div>
         <p class="muted text-sm mb-12" id="voterCount"></p>
+        <div class="error-box" id="loadError" role="alert"></div>
         <div class="table-wrap">
           <table class="data">
             <thead>

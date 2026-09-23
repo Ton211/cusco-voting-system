@@ -110,11 +110,21 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').get();
-    allUsers = snap.docs.map(function (doc) {
-      const d = doc.data();
-      return Object.assign({ uid: doc.id }, d);
-    });
+    const $loadError = document.getElementById('loadError');
+    try {
+      const snap = await DB.collection('users').get();
+      allUsers = snap.docs.map(function (doc) {
+        const d = doc.data();
+        return Object.assign({ uid: doc.id }, d);
+      });
+      if ($loadError) $loadError.style.display = 'none';
+    } catch (err) {
+      // Never fail silently: a denied or broken query must say so,
+      // otherwise the list looks empty and voters look "missing".
+      const msg = 'Could not load the voters list: ' + friendlyError(err) + ' Try Refresh, or sign out and sign in again.';
+      if ($loadError) { $loadError.textContent = msg; $loadError.style.display = 'block'; }
+      throw err;
+    }
     render($search.value);
     try {
       const sSnap = await DB.collection('studentList').get();
@@ -295,8 +305,9 @@
     let pw2 = document.getElementById('resetConfirm').value;
     const target = allUsers.find(function (x) { return x.uid === uid; });
     // Empty reset for a voter means: restore adm number as password + force personal reset.
-    if (target && target.role === 'voter' && !pw && !pw2) {
-      pw = String(target.voterId || '');
+    const resetToAdm = !!(target && target.role === 'voter' && !pw && !pw2);
+    if (resetToAdm) {
+      pw = String(target.admNumber || target.voterId || '');
       pw2 = pw;
     }
     if (pw !== pw2) { toast('Passwords do not match.', 'error'); return; }
@@ -306,8 +317,11 @@
     btn.disabled = true;
     try {
       await resetPasswordFn({ uid, newPassword: pw });
-      toast('Password reset successfully.', 'success');
+      toast(resetToAdm
+        ? 'Password reset to the adm number. The voter will be asked to set a new password at next login.'
+        : 'Password reset successfully.', 'success');
       closeModal('resetModal');
+      await load();
     } catch (err) {
       toast(callFriendly(err).message, 'error');
     } finally {
@@ -359,6 +373,11 @@
   if ($roleFilter) $roleFilter.addEventListener('change', function () {
     roleFilter = $roleFilter.value || 'voter';
     render($search.value);
+  });
+  const $refreshBtn = document.getElementById('refreshBtn');
+  if ($refreshBtn) $refreshBtn.addEventListener('click', function () {
+    $refreshBtn.disabled = true;
+    load().catch(function () {}).then(function () { $refreshBtn.disabled = false; });
   });
 
   // Import students wiring

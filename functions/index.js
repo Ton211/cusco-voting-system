@@ -350,9 +350,8 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
   rateLimit('resetPassword', context.auth ? context.auth.uid : clientIp(context));
   const callerRole = requireRole(context, ['admin', 'superadmin']);
   const uid = String(data.uid || '');
-  const password = String(data.newPassword || '');
+  let password = String(data.newPassword || '');
   if (!uid) throw HttpsError('invalid-argument', 'User id is required.');
-  if (password.length < 6) throw HttpsError('invalid-argument', 'Password must be at least 6 characters.');
 
   const userDoc = await db.collection('users').doc(uid).get();
   if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
@@ -363,6 +362,17 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
   if (target.role === 'superadmin' && callerRole !== 'superadmin') {
     throw HttpsError('permission-denied', 'Only a Super Admin may reset another Super Admin\'s password.');
   }
+
+  // Blank password: restore the voter's adm number as a temporary
+  // password. The voter must set their own password at next sign in
+  // (mustChangePassword flag below + the set-password gate).
+  if (!password) {
+    if (target.role !== 'voter') throw HttpsError('invalid-argument', 'Enter a new password of at least 6 characters.');
+    const adm = String(target.admNumber || target.voterId || '').trim();
+    if (adm.length < 6) throw HttpsError('failed-precondition', 'This adm number is too short to use as a password. Enter a new password instead.');
+    password = adm;
+  }
+  if (password.length < 6) throw HttpsError('invalid-argument', 'Password must be at least 6 characters.');
 
   try {
     await admin.auth().updateUser(uid, { password: password });
