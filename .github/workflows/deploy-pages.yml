@@ -1,0 +1,38 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install -g wrangler
+
+      # Ship ONLY the static site. functions/ is the Firebase backend
+      # (deployed with `firebase deploy --only functions`) and must never
+      # be uploaded to Pages. _worker.js makes Pages ignore functions/
+      # and enforces the student/admin URL split.
+      - name: Build publish directory
+        run: |
+          rm -rf publish && mkdir -p publish
+          cp index.html login.html _headers _worker.js publish/
+          cp -r css js images admin voter sys publish/
+
+      - name: Deploy to Cloudflare Pages
+        run: >
+          wrangler pages deploy publish
+          --project-name=cusco-voting-system
+          --branch=main
+          --commit-hash=${{ github.sha }}
+          --commit-message="${{ github.event.head_commit.message }}"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
