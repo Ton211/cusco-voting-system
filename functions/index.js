@@ -1,5 +1,5 @@
 // =====================================================================
-//  CUSCO Voting System — server-side Cloud Functions
+//  CUSCO Voting System: server-side Cloud Functions
 //
 //  These functions enforce the rules a normal web client must never be
 //  able to break:
@@ -70,6 +70,7 @@ const RATE_LIMITS = {
   setStaffAlias: { windowMs: 60 * 60 * 1000, max: 10 },
   resolveStaffUsername: { windowMs: 15 * 60 * 1000, max: 10 },
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },
+  updateUser: { windowMs: 60 * 60 * 1000, max: 60 },
   saveElection: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteElection: { windowMs: 60 * 60 * 1000, max: 30 },
   bootstrapSuperAdmin: { windowMs: 60 * 60 * 1000, max: 3 }
@@ -645,7 +646,7 @@ exports.resolveStaffUsername = functions.https.onCall(async (data, context) => {
 });
 
 // ---------------------------------------------------------------------
-//  setUserRole  (Super Admin only) — used to grant/revoke admin powers
+//  setUserRole  (Super Admin only): used to grant/revoke admin powers
 // ---------------------------------------------------------------------
 exports.setUserRole = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
@@ -669,13 +670,47 @@ exports.setUserRole = functions.https.onCall(async (data, context) => {
 // ---------------------------------------------------------------------
 //  saveElection
 //  Create or update an election. Only one election can be ACTIVE at a
-//  time — opening one automatically closes any other active election.
+//  time: opening one automatically closes any other active election.
 // ---------------------------------------------------------------------
 exports.saveElection = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('saveElection', context.auth ? context.auth.uid : clientIp(context));
   requireAdmin(context);
 
+  // Update path: merge incoming fields over the stored election so
+  // partial updates (e.g. Open/Close sending only a status) work.
+  if (data.id) {
+    const ref = db.collection('elections').doc(String(data.id));
+    const existing = await ref.get();
+    if (!existing.exists) throw HttpsError('not-found', 'Election not found.');
+    const prev = existing.data() || {};
+
+    const name = data.name !== undefined ? String(data.name || '').trim() : String(prev.name || '').trim();
+    if (!name) throw HttpsError('invalid-argument', 'Election name is required.');
+
+    const status = data.status !== undefined ? String(data.status || 'draft').trim() : String(prev.status || 'draft');
+    if (!['draft', 'scheduled', 'active', 'closed'].includes(status)) {
+      throw HttpsError('invalid-argument', 'Invalid status.');
+    }
+
+    const startTime = data.startTimeISO !== undefined ? toTimestamp(data.startTimeISO) : (prev.startTime || null);
+    const endTime = data.endTimeISO !== undefined ? toTimestamp(data.endTimeISO) : (prev.endTime || null);
+    if (!startTime || !endTime) throw HttpsError('invalid-argument', 'Valid start and end times are required.');
+    if (tsMillis(endTime) <= tsMillis(startTime)) throw HttpsError('invalid-argument', 'End time must be after the start time.');
+
+    await ref.update({
+      name: name,
+      description: data.description !== undefined ? String(data.description || '').trim() : String(prev.description || ''),
+      startTime: startTime,
+      endTime: endTime,
+      status: status,
+      updatedAt: serverNow()
+    });
+    await applySingleActiveRule(String(data.id), status);
+    return { id: String(data.id) };
+  }
+
+  // Create path: all fields are required.
   const name = String(data.name || '').trim();
   if (!name) throw HttpsError('invalid-argument', 'Election name is required.');
 
@@ -687,7 +722,7 @@ exports.saveElection = functions.https.onCall(async (data, context) => {
   const startTime = toTimestamp(data.startTimeISO);
   const endTime = toTimestamp(data.endTimeISO);
   if (!startTime || !endTime) throw HttpsError('invalid-argument', 'Valid start and end times are required.');
-  if (endTime <= startTime) throw HttpsError('invalid-argument', 'End time must be after the start time.');
+  if (tsMillis(endTime) <= tsMillis(startTime)) throw HttpsError('invalid-argument', 'End time must be after the start time.');
 
   const fields = {
     name: name,
@@ -697,15 +732,6 @@ exports.saveElection = functions.https.onCall(async (data, context) => {
     status: status,
     updatedAt: serverNow()
   };
-
-  if (data.id) {
-    const ref = db.collection('elections').doc(String(data.id));
-    const existing = await ref.get();
-    if (!existing.exists) throw HttpsError('not-found', 'Election not found.');
-    await ref.update(fields);
-    await applySingleActiveRule(String(data.id), status);
-    return { id: String(data.id) };
-  }
 
   fields.createdAt = serverNow();
   const ref = await db.collection('elections').add(fields);
@@ -718,6 +744,14 @@ function toTimestamp(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return null;
   return admin.firestore.Timestamp.fromDate(d);
+}
+
+// Millis for either an admin Timestamp or a plain Date.
+function tsMillis(t) {
+  if (!t) return NaN;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  const d = t instanceof Date ? t : new Date(t);
+  return d.getTime();
 }
 
 // ---------------------------------------------------------------------
@@ -766,7 +800,7 @@ async function applySingleActiveRule(keepId, newStatus) {
 }
 
 // ---------------------------------------------------------------------
-//  createVote  —  the secure one-person/one-vote transaction
+//  createVote :  the secure one-person/one-vote transaction
 //
 //  Runs entirely server-side in a Firestore transaction so a voter can
 //  never vote twice, even with multiple tabs, scripts or direct writes.

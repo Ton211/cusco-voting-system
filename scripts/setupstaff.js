@@ -6,7 +6,7 @@
 //   $env:STAFF_USERNAME="cusco"
 //   $env:STAFF_PASSWORD="use-a-strong-password-once"
 //   $env:STAFF_NAME="CUSCO"
-//   node scripts/setup-staff.js
+//   node scripts/setupstaff.js
 const admin = require('firebase-admin');
 const readline = require('readline');
 

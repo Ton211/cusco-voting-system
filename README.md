@@ -45,7 +45,7 @@ Cloud Functions), hosted on **Cloudflare Pages**.
 ## Quick start — view the site (no Firebase needed)
 
 ```bash
-npm install    # nothing to install for the frontend — it's pure HTML/CSS/JS
+npm install    # installs the test tooling; the site itself is pure HTML/CSS/JS
 npm start      # serves the site on the first free port starting at 8080
 ```
 
@@ -148,16 +148,15 @@ npm start        # full emulator stack + the static site
 ```
 
 No `firebase init` needed — everything is already wired in `firebase.json`,
-`scripts/dev.js` (auto free-port selection) and `js/firebase-init.js` (auto
-emulator routing). Relevant npm scripts:
+`scripts/static-server.js` (auto free-port selection) and `js/firebase-init.js`.
+Relevant npm scripts:
 
 | Command | What it does |
 |---|---|
-| `npm start` | boots Auth, Firestore, Storage, Functions + Hosting on the first **free** ports |
-| `npm run bootstrap` | creates the first Super Admin, using the ports from `npm start` |
-| `npm run serve` | alias for `npm start` |
+| `npm start` / `npm run serve` | serves the static site on the first free port from 8080 |
 | `npm run deploy:rules` | pushes Firestore + Storage rules |
 | `npm run deploy:functions` | deploys the Cloud Functions |
+| `npm run test:rules` | runs the security rules tests against a Firestore emulator |
 
 ## 9. Out of scope for the MVP (future work)
 

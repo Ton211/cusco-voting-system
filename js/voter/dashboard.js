@@ -27,7 +27,7 @@
 
     if (!activeElection) {
       if (scheduledElection) {
-        html += '<div class="alert alert-warn center"><strong>No election is open right now.</strong><br>Accepting votes ' + fmtDateTime(scheduledElection.startTime) + ' – ' + fmtDateTime(scheduledElection.endTime) + '</div>';
+        html += '<div class="alert alert-warn center"><strong>No election is open right now.</strong><br>Accepting votes ' + fmtDateTime(scheduledElection.startTime) + '  to  ' + fmtDateTime(scheduledElection.endTime) + '</div>';
       } else {
         html += '<div class="alert alert-info center">No election is currently active. Please check back later.</div>';
       }
@@ -36,7 +36,7 @@
     }
 
     if (alreadyVotedInThisElection) {
-      // Already voted in this election — show the receipt only.
+      // Already voted in this election: show the receipt only.
       try {
         const recSnap = await DB.collection('users').doc(a.user.uid).collection('receipts').doc(activeElection.id).get();
         const receipt = recSnap.exists ? recSnap.data().receiptId : null;
@@ -45,7 +45,7 @@
           '<div class="center">' +
           (receipt ? '<span class="receipt">' + esc(receipt) + '</span>' : '') +
           '<p class="muted mt-16" style="font-size:13px;">Your vote was recorded at ' + fmtDateTime(profile.lastVotedAt) + '.</p>' +
-          '<p class="muted" style="font-size:13px;">One vote per election — thank you for voting.</p>' +
+          '<p class="muted" style="font-size:13px;">One vote per election. Thank you for voting.</p>' +
           '</div>';
       } catch (err) {
         html += '<div class="alert alert-success center mb-12"><strong>You have already voted in this election.</strong></div>';

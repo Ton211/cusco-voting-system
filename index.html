@@ -7,15 +7,14 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="public">
-
-  <main style="min-height:100vh; display:flex; align-items:center;">
+  <main class="auth-page">
     <div class="hero">
       <div class="center-logo mb-12">
         <img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="96" height="96">
         <p>Voting System</p>
       </div>
       <div class="center-card" id="loginCard" style="margin-top:18px; text-align:left;">
-        <div id="landingError" class="error-box"></div>
+        <div id="landingError" class="error-box" role="alert"></div>
         <form id="landingLoginForm" novalidate>
           <div class="form-group mb-12">
             <label for="landingAdm">Adm number</label>
@@ -25,11 +24,11 @@
             <label for="landingPassword">Password</label>
             <input class="input" type="password" id="landingPassword" placeholder="Your password or adm number" autocomplete="current-password">
           </div>
-          <button type="submit" id="landingLoginBtn" class="btn btn-primary" style="width:100%;">Log In</button>
+          <button type="submit" id="landingLoginBtn" class="btn btn-primary w-full">Log In</button>
         </form>
-        <div class="center mt-16" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-          <a href="#" id="landingForgot" style="font-size:13px;">Forgot Password?</a>
-          <a href="#" id="showRegisterBtn" class="btn btn-outline btn-sm" style="text-decoration:none; border:1px solid #4f46e5; color:#4f46e5;">Register as a voter</a>
+        <div class="login-links">
+          <a href="#" id="landingForgot" class="link">Forgot password?</a>
+          <a href="#" id="showRegisterBtn" class="btn btn-outline btn-sm">Register as a voter</a>
         </div>
       </div>
 
@@ -40,9 +39,9 @@
             <label for="landingRegAdm">Adm number</label>
             <input class="input" type="text" id="landingRegAdm" placeholder="e.g. ADM001" autocomplete="username">
           </div>
-          <button type="submit" id="landingRegisterBtn" class="btn btn-outline" style="width:100%;">Register</button>
+          <button type="submit" id="landingRegisterBtn" class="btn btn-outline w-full">Register</button>
         </form>
-        <p class="muted center" style="font-size:12px; margin-top:8px;">Works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
+        <p class="auth-note">Works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
         <div class="center mt-16">
           <button class="btn btn-ghost btn-sm" id="showLoginBtn" type="button">Back to Log In</button>
         </div>

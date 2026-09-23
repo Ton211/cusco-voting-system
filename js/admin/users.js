@@ -45,7 +45,7 @@
           : '<span class="badge active">Active</span>';
         return '<tr>' +
           '<td><strong>' + esc(u.fullName) + '</strong>' + self + '</td>' +
-          '<td>' + esc(u.email || '—') + '</td>' +
+          '<td>' + esc(u.email || 'Not set') + '</td>' +
           '<td>' + roleBadge(u.role) + '</td>' +
           '<td>' + status + '</td>' +
           '<td><div class="row-actions">' +

@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Staff Portal — CUSCO Voting System</title>
+  <title>Staff Portal | CUSCO Voting System</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body data-page="admin-login" style="min-height:100vh; display:flex; align-items:center; background:var(--bg);">
-
+<body data-page="admin-login">
+  <main class="auth-page">
   <div class="center-card">
     <div class="center-logo mb-12">
       <img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="96" height="96">
@@ -17,7 +17,7 @@
     </div>
 
     <div id="noticeBox" class="info-box hidden"></div>
-    <div id="errorBox" class="error-box"></div>
+    <div id="errorBox" class="error-box" role="alert"></div>
 
     <form id="loginForm" novalidate>
       <div class="form-group mb-12">
@@ -30,15 +30,17 @@
         <input class="input" type="password" id="password" name="password" placeholder="Your password" autocomplete="current-password" required>
       </div>
 
-      <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;">
+      <button type="submit" id="loginBtn" class="btn btn-primary w-full">
         Sign In
       </button>
     </form>
 
-    <div class="center mt-16">
-      <a href="#" id="forgotLink" style="font-size:13px;">Forgot Password?</a>
+    <div class="login-links">
+      <a href="#" id="forgotLink" class="link">Forgot password?</a>
     </div>
+    <p class="auth-note">Restricted area. Staff accounts only.</p>
   </div>
+  </main>
 
   <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

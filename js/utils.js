@@ -23,15 +23,15 @@ function fmtNum(value) {
 }
 
 function fmtDate(ts) {
-  if (!ts) return '—';
+  if (!ts) return 'Not set';
   const d = tsToDate(ts);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? 'Not set' : d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function fmtDateTime(ts) {
-  if (!ts) return '—';
+  if (!ts) return 'Not set';
   const d = tsToDate(ts);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return 'Not set';
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 

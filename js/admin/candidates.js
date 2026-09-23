@@ -55,7 +55,7 @@
     $positionSelect.innerHTML =
       '<option value="">Select position…</option>' +
       list.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('') +
-      (list.length ? '' : '<option value="" disabled>No positions yet — add them in Elections</option>');
+      (list.length ? '' : '<option value="" disabled>No positions yet. Add them in Elections</option>');
   }
 
   $electionSelect.addEventListener('change', function () {
@@ -67,7 +67,7 @@
   // ---------------------------------------------------------------
   function electionName(id) {
     const e = elections.find(function (x) { return x.id === id; });
-    return e ? e.name : '—';
+    return e ? e.name : 'Not set';
   }
 
   function positionName(id) {
@@ -76,7 +76,7 @@
       const p = positionsByElection[k].find(function (x) { return x.id === id; });
       if (p) name = p.name;
     });
-    return name || '—';
+    return name || 'Not set';
   }
 
   function render(q) {

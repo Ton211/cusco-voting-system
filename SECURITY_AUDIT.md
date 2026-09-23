@@ -21,7 +21,7 @@ Date of audit: 2026-09-18.
   (`voter` | `admin` | `superadmin`), also mirrored into the `users/{uid}` doc.
 - **Data**: Firestore. Candidate photos in Firebase Storage.
 - **Pages**:
-  - Public: `index.html`, `login.html` (voter), `sys/portal.html` (hidden staff login)
+  - Public: `index.html`, `login.html` (voter), `sys/cuscostaff9f2k41.html` (hidden staff login)
   - Admin: `admin/{dashboard,voters,candidates,elections,results}.html`
   - Voter: `voter/{dashboard,vote,review,success}.html`
 
@@ -247,7 +247,7 @@ trust frontend state, disabled buttons, or storage.
 | `functions/index.js` | resetPassword guard; rate limiter; App Check gate |
 | `js/firebase-config.js` | App Check provider config (debug token switch) |
 | `js/firebase-init.js` | App Check init |
-| `sys/portal.html`, all pages | CSP-safe inline script extraction + App Check script tag |
+| `sys/cuscostaff9f2k41.html`, all pages | CSP-safe inline script extraction + App Check script tag |
 | `storage.rules` | content-type / size / path validation |
 | `_headers` (new) | security headers + CSP |
 | `.gitignore` | service accounts, env, exports, logs |
@@ -262,7 +262,7 @@ trust frontend state, disabled buttons, or storage.
   functions and elections only via `saveElection`. The **rules test suite** must
   confirm this before deploy, or the admin UI will silently fail.
 - CSP `script-src` without `'unsafe-inline'` **blocks inline scripts currently in
-  `sys/portal.html`**; that inline script must be moved to a JS file first.
+  `sys/cuscostaff9f2k41.html`**; that inline script must be moved to a JS file first.
 - `candidate-photos` content-type restriction will reject uploads whose MIME type
   the browser reports as `application/octet-stream`; acceptable (image/* accept
   filter already present).

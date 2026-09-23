@@ -1,5 +1,5 @@
 // =====================================================================
-//  Vote success page — shows the anonymised receipt reference
+//  Vote success page. Shows the anonymised receipt reference
 // =====================================================================
 (function () {
   const $ref = document.getElementById('reference');
@@ -21,7 +21,7 @@
       const uid = window.__auth.user.uid;
       DB.collection('elections').where('status', '==', 'active').limit(1).get()
         .then(function (snap) {
-          if (!snap.docs.length) { $ref.textContent = '—'; return; }
+          if (!snap.docs.length) { $ref.textContent = 'Not available'; return; }
           const electionId = snap.docs[0].id;
           return DB.collection('users').doc(uid).collection('receipts').doc(electionId).get();
         })

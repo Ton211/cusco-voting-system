@@ -17,8 +17,8 @@
       const p = snap.exists ? snap.data() : {};
       $body.innerHTML =
         '<table class="data">' +
-        '<tr><td><span class="muted">Full Name</span></td><td><strong>' + esc(p.fullName || a.user.displayName || '—') + '</strong></td></tr>' +
-        '<tr><td><span class="muted">Adm Number</span></td><td>' + esc(p.voterId || p.admNumber || '—') + '</td></tr>' +
+        '<tr><td><span class="muted">Full Name</span></td><td><strong>' + esc(p.fullName || a.user.displayName || 'Not set') + '</strong></td></tr>' +
+        '<tr><td><span class="muted">Adm Number</span></td><td>' + esc(p.voterId || p.admNumber || 'Not set') + '</td></tr>' +
         '<tr><td><span class="muted">Status</span></td><td>' + esc(p.status || 'active') + '</td></tr>' +
         '</table>';
     } catch (err) {

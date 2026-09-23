@@ -26,10 +26,10 @@
       return;
     }
 
-    $electionName.textContent = draft.electionName || '—';
+    $electionName.textContent = draft.electionName || 'Not set';
     $rows.innerHTML = Object.keys(draft.ballot).map(function (posId) {
       const posName = (draft.positionNames && draft.positionNames[posId]) || 'Position';
-      const candName = (draft.candidateNames && draft.candidateNames[posId]) || '—';
+      const candName = (draft.candidateNames && draft.candidateNames[posId]) || 'Not set';
       return (
         '<div class="review-row">' +
         '<div><span class="pos">' + esc(posName) + '</span><span class="sel">' + esc(candName) + '</span></div>' +

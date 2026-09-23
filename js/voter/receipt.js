@@ -21,7 +21,7 @@
       $body.innerHTML = recSnap.docs.map(function (d) {
         const r = d.data();
         return '<div class="review-row"><div><span class="pos">' + esc(names[r.electionId] || r.electionId) + '</span>' +
-          '<span class="receipt">' + esc(r.receiptId || '—') + '</span></div>' +
+          '<span class="receipt">' + esc(r.receiptId || 'Not set') + '</span></div>' +
           '<span class="badge voted">Voted</span></div>';
       }).join('');
     } catch (err) {

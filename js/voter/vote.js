@@ -1,5 +1,5 @@
 // =====================================================================
-//  Voting page — one radio per candidate, grouped by position
+//  Voting page. One radio per candidate, grouped by position
 // =====================================================================
 (function () {
   const $body = document.getElementById('voteBody');

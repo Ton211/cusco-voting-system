@@ -28,7 +28,7 @@ const FIREBASE_FUNCTIONS_REGION = "us-central1";
 //  on the functions to start rejecting untrusted clients.
 //
 //  For local testing set FIREBASE_APPCHECK_DEBUG = true (or append
-//  ?appcheck.debug=... to the URL) — see README §App Check.
+//  ?appcheck.debug=... to the URL). See README §App Check.
 // ---------------------------------------------------------------------
 const FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY = null; // TODO: paste site key here
 const FIREBASE_APPCHECK_DEBUG = false; // prod: debug tokens off (set true only for local testing)

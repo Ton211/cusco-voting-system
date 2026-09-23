@@ -4,7 +4,11 @@
   "private": true,
   "description": "CUSCO Voting System MVP — static frontend (Firebase backend wired up separately).",
   "scripts": {
-    "start": "node scripts/static-server.js"
+    "start": "node scripts/static-server.js",
+    "serve": "node scripts/static-server.js",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "deploy:functions": "firebase deploy --only functions",
+    "test:rules": "firebase emulators:exec --only firestore \"node tests/rules.test.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2"

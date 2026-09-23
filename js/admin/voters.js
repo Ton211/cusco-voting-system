@@ -59,7 +59,7 @@
       .map(function (u) {
         return (
           '<tr>' +
-          '<td><strong>' + esc(u.voterId || '—') + '</strong></td>' +
+          '<td><strong>' + esc(u.voterId || 'Not set') + '</strong></td>' +
           '<td>' + esc(u.fullName) + '</td>' +
           '<td>' + passwordBadge(u) + '</td>' +
           '<td>' + roleBadge(u.role) + ' ' + statusBadge(u) + '</td>' +
@@ -234,8 +234,8 @@
     $viewDetails.innerHTML =
       '<table class="data">' +
       '<tr><td><span class="muted">Full Name</span></td><td><strong>' + esc(u.fullName) + '</strong></td></tr>' +
-      '<tr><td><span class="muted">Adm Number</span></td><td>' + esc(u.voterId || '—') + '</td></tr>' +
-      '<tr><td><span class="muted">Gender</span></td><td>' + esc(u.gender || '—') + '</td></tr>' +
+      '<tr><td><span class="muted">Adm Number</span></td><td>' + esc(u.voterId || 'Not set') + '</td></tr>' +
+      '<tr><td><span class="muted">Gender</span></td><td>' + esc(u.gender || 'Not set') + '</td></tr>' +
       '<tr><td><span class="muted">Role</span></td><td>' + roleBadge(u.role) + '</td></tr>' +
       '<tr><td><span class="muted">Password</span></td><td>' + passwordBadge(u) + '</td></tr>' +
       '<tr><td><span class="muted">Status</span></td><td>' + statusBadge(u) + '</td></tr>' +

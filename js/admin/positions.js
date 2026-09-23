@@ -14,7 +14,7 @@
 
   function electionName(id) {
     const e = elections.find(function (x) { return x.id === id; });
-    return e ? e.name : '—';
+    return e ? e.name : 'Not set';
   }
 
   function render() {

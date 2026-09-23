@@ -153,7 +153,7 @@
       '<div class="card">' +
       '<div class="card-title"><span>Summary</span></div>' +
       '<p class="muted">Total votes recorded by the server: <strong>' + fmtNum(totalVotes) + '</strong></p>' +
-      '<p class="muted mt-16" style="font-size:13px;">Ballots are stored as anonymised aggregates — individual votes are never linked to voter identities.</p>' +
+      '<p class="muted mt-16" style="font-size:13px;">Ballots are stored as anonymised aggregates. Individual votes are never linked to voter identities.</p>' +
       '</div>';
 
     $body.innerHTML = html;

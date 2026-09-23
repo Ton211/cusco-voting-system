@@ -160,7 +160,7 @@
       if (btn.dataset.action === 'edit') {
         const s = allStudents.find(function (x) { return x.admNumber === adm; });
         editAdm = adm;
-        document.getElementById('editStudentFor').textContent = adm + ' — ' + ((s && s.fullName) || '');
+        document.getElementById('editStudentFor').textContent = adm + ': ' + ((s && s.fullName) || '');
         document.getElementById('editStudentName').value = (s && s.fullName) || '';
         openModal('editStudentModal');
       } else if (btn.dataset.action === 'del') {

@@ -44,7 +44,7 @@
         const blocks = (positions[e.id] || []).map(function (p) {
           const tally = ((v.results || {})[p.id]) || {};
           const ids = Object.keys(tally);
-          if (!ids.length) return '<p class="muted" style="font-size:13px; margin-top:10px;">Position: <strong>' + esc(p.name) + '</strong> — no votes yet.</p>';
+          if (!ids.length) return '<p class="muted" style="font-size:13px; margin-top:10px;">Position: <strong>' + esc(p.name) + '</strong> has no votes yet.</p>';
           const max = Math.max.apply(null, ids.map(function (c) { return tally[c] || 0; }).concat([0]));
           const rows = ids
             .sort(function (a, b) { return (tally[b] || 0) - (tally[a] || 0); })

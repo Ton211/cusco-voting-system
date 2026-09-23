@@ -28,6 +28,12 @@
   }
 
   const isStaffPage = document.body && document.body.dataset && document.body.dataset.page === 'admin-login';
+  const defaultBtnText = submitBtn ? submitBtn.textContent : 'Log In';
+
+  function resetBtn() {
+    submitBtn.disabled = false;
+    submitBtn.textContent = defaultBtnText;
+  }
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -57,8 +63,7 @@
           email = res.data.email;
         } catch (aliasErr) {
           showError('Invalid staff credentials.');
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Log In';
+          resetBtn();
           return;
         }
       } else {
@@ -90,7 +95,7 @@
         showError(friendlyError(err));
       }
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Log In';
+      submitBtn.textContent = defaultBtnText;
     }
   });
 
@@ -98,7 +103,7 @@
     e.preventDefault();
     const username = emailInput.value.trim();
     if (!username) {
-      showError('Enter your adm number first, then press "Forgot Password?".');
+      showError('Enter your adm number first, then press "Forgot password?".');
       return;
     }
     if (username.indexOf('@') === -1) {

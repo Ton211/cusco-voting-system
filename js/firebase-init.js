@@ -1,7 +1,7 @@
 // =====================================================================
 //  Firebase initialization (compat SDK via CDN script tags in each page)
 //
-//  Paste your Firebase web app config into js/firebase-config.js —
+//  Paste your Firebase web app config into js/firebase-config.js:
 //  the site uses it automatically.
 //
 //  When you want to test against the local emulator suite, either:
@@ -41,7 +41,7 @@ if (typeof firebase.appCheck !== 'undefined' && firebase.appCheck && FIREBASE_AP
 // const USE_EMULATORS = window.LOCAL_EMULATOR === true || /[?&]emulator=1/.test(window.location.search);
 // if (USE_EMULATORS) {
 //   AUTH.useEmulator('http://127.0.0.1:9099');
-//   DB.useEmulator({ host: '127.0.0.1', port: 8080 });
+//   DB.useEmulator({ host: '127.0.0.1', port: 8081 });
 //   FB_STORAGE.useEmulator('127.0.0.1', 9199);
 //   FB_FUNCTIONS.useEmulator('http://127.0.0.1:5001');
 // }
