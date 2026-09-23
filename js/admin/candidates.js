@@ -37,7 +37,7 @@
     });
     allCandidates = cSnap.docs.map(function (d) {
       const x = d.data();
-      return { id: d.id, electionId: x.electionId, positionId: x.positionId, name: x.name, photo: x.photo || null, description: x.description || '', status: x.status };
+      return { id: d.id, electionId: x.electionId, positionId: x.positionId, name: x.name, photo: x.photo || null, status: x.status };
     });
 
     const prevElection = $electionSelect.value;
@@ -102,6 +102,7 @@
         '<td><div class="row-actions">' +
         '<button class="btn btn-outline btn-sm" data-action="edit" data-id="' + esc(c.id) + '">Edit</button>' +
         '<button class="btn btn-sm ' + (c.status === 'active' ? 'btn-danger-inline' : 'btn-success-inline') + '" data-action="toggle" data-id="' + esc(c.id) + '">' + (c.status === 'active' ? 'Deactivate' : 'Activate') + '</button>' +
+        '<button class="btn btn-danger-outline btn-sm" data-action="delete" data-id="' + esc(c.id) + '">Delete</button>' +
         '</div></td>' +
         '</tr>'
       );
@@ -139,7 +140,6 @@
     populatePositions(c.electionId);
     $positionSelect.value = c.positionId;
     document.getElementById('candName').value = c.name;
-    document.getElementById('candDescription').value = c.description || '';
     document.getElementById('candStatus').value = c.status;
     openModal('candidateModal');
   }
@@ -160,7 +160,6 @@
       electionId: $electionSelect.value,
       positionId: $positionSelect.value,
       name: document.getElementById('candName').value.trim(),
-      description: document.getElementById('candDescription').value.trim(),
       status: document.getElementById('candStatus').value
     };
     if (!data.electionId || !data.positionId) { toast('Select an election and a position.', 'error'); return; }
@@ -193,12 +192,45 @@
   });
 
   // ---------------------------------------------------------------
-  // Toggle status
+  // Toggle status + delete
   // ---------------------------------------------------------------
+  async function deleteCandidate(id) {
+    const c = allCandidates.find(function (x) { return x.id === id; });
+    if (!c) return;
+    const ok = await confirmDialog({
+      title: 'Delete candidate',
+      message: 'Permanently delete "' + c.name + '"? This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      // Never delete a candidate once voting has started: their votes
+      // would disappear from the results view. Deactivate instead.
+      const election = elections.find(function (x) { return x.id === c.electionId; });
+      const votesSnap = await DB.collection('votes').doc(c.electionId).get().catch(function () { return null; });
+      const votesCast = votesSnap && votesSnap.exists ? (votesSnap.data().totalVotes || 0) : 0;
+      if ((election && election.status === 'active') || votesCast > 0) {
+        toast('Votes have already started for this election. Deactivate the candidate instead of deleting.', 'error');
+        return;
+      }
+      if (c.photo) {
+        try { await FB_STORAGE.refFromURL(c.photo).delete(); } catch (photoErr) { /* photo already gone */ }
+      }
+      await DB.collection('candidates').doc(c.id).delete();
+      toast('Candidate deleted.', 'success');
+      await loadMeta();
+      render($search.value.toLowerCase().trim());
+    } catch (err) {
+      toast(friendlyError(err), 'error');
+    }
+  }
+
   $tbody.addEventListener('click', async function (e) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     if (btn.dataset.action === 'edit') { openEdit(btn.dataset.id); return; }
+    if (btn.dataset.action === 'delete') { deleteCandidate(btn.dataset.id); return; }
     if (btn.dataset.action === 'toggle') {
       const c = allCandidates.find(function (x) { return x.id === btn.dataset.id; });
       if (!c) return;
