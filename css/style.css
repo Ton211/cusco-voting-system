@@ -213,6 +213,8 @@ input, select, textarea { font: inherit; }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn-danger:hover { background: #991b1b; }
+.btn-danger-outline { border: 1px solid var(--danger); color: var(--danger); background: #fff; }
+.btn-danger-outline:hover { background: var(--danger-soft); color: var(--danger); }
 .btn-ghost { background: transparent; color: var(--muted); }
 .btn-ghost:hover { color: var(--text); background: #eef1f6; }
 .btn-sm { padding: 5px 10px; font-size: 13px; border-radius: 7px; }

@@ -33,10 +33,14 @@
       $hideToggle.checked = true;
     }
 
-    // Auto pick so results show at once: active election first,
+    // Auto pick so results show at once: the election from ?election=
+    // (dashboard deep link) first, then the active election,
     // else the single election when only one exists.
+    const params = new URLSearchParams(window.location.search || '');
+    const requested = params.get('election');
+    const requestedMatch = requested && elections.find(function (e) { return e.id === requested; });
     const active = elections.find(function (e) { return e.status === 'active'; });
-    const pick = active || (elections.length === 1 ? elections[0] : null);
+    const pick = requestedMatch || active || (elections.length === 1 ? elections[0] : null);
     if (pick) {
       $select.value = pick.id;
       selectedElection = { id: pick.id };

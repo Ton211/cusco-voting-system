@@ -35,19 +35,21 @@
         </div>
       </div>
 
+      <p id="statScope" class="muted text-sm mb-12">Loading statistics...</p>
       <div class="stat-grid" id="statGrid">
-        <div class="stat"><div class="num">…</div><div class="label">Total Voters</div></div>
-        <div class="stat"><div class="num">…</div><div class="label">Active Candidates</div></div>
-        <div class="stat"><div class="num green">…</div><div class="label">Votes Cast</div></div>
-        <div class="stat"><div class="num amber">…</div><div class="label">Voting Turnout</div></div>
+        <div class="stat"><div class="num">Loading...</div><div class="label">Active Voters</div></div>
+        <div class="stat"><div class="num">Loading...</div><div class="label">Active Candidates</div></div>
+        <div class="stat"><div class="num green">Loading...</div><div class="label">Votes Cast</div></div>
+        <div class="stat"><div class="num amber">Loading...</div><div class="label">Voting Turnout</div></div>
       </div>
+      <p class="muted text-sm mb-12">One voter counts as one vote, no matter how many positions are on the ballot.</p>
 
       <div class="card" id="electionCard">
         <div class="card-title">
-          <span>Active Election</span>
-          <span id="electionStatusBadge"></span>
+          <span>Elections</span>
+          <a class="btn btn-outline btn-sm" href="/admin/elections.html">Manage</a>
         </div>
-        <div id="electionInfo"><p class="muted">No election is currently active.</p></div>
+        <div id="electionsList"><p class="muted">Loading elections...</p></div>
       </div>
 
       <div class="card" id="nextStepsCard">
