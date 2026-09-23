@@ -19,6 +19,12 @@
   const $tbody = document.getElementById('votersTableBody');
   const $empty = document.getElementById('emptyState');
   const $search = document.getElementById('searchBox');
+  const $roleFilter = document.getElementById('roleFilter');
+  const $count = document.getElementById('voterCount');
+  // Default view: voters only. A student appears here the moment they
+  // finish self registration (their users doc carries role voter).
+  // Staff can switch the filter to audit admins too.
+  let roleFilter = 'voter';
   let allStudents = [];
   const $studentBody = document.getElementById('studentTableBody');
   const $studentEmpty = document.getElementById('studentEmpty');
@@ -32,9 +38,12 @@
 
   function statusBadge(u) {
     const hasVoted = !!(u.votedIn && Object.keys(u.votedIn).length);
-    if (hasVoted) return '<span class="badge voted">Voted</span>';
-    if (u.status === 'inactive') return '<span class="badge inactive">Inactive</span>';
-    return '<span class="badge active">Active</span>';
+    let badge;
+    if (hasVoted) badge = '<span class="badge voted">Voted</span>';
+    else if (u.status === 'inactive') badge = '<span class="badge inactive">Inactive</span>';
+    else badge = '<span class="badge active">Active</span>';
+    if (u.role === 'voter' && u.selfRegistered === true) badge += ' <span class="badge admin">Self registered</span>';
+    return badge;
   }
 
   function passwordBadge(u) {
@@ -46,13 +55,19 @@
   function render(filterText) {
     const q = (filterText || '').toLowerCase().trim();
     const rows = allUsers.filter(function (u) {
+      if (roleFilter === 'voter' && u.role !== 'voter') return false;
+      if (roleFilter === 'staff' && (u.role !== 'admin' && u.role !== 'superadmin')) return false;
       if (!q) return true;
-      return [u.voterId, u.fullName].some(function (v) {
+      return [u.voterId, u.admNumber, u.fullName, u.email].some(function (v) {
         return String(v || '').toLowerCase().includes(q);
       });
     });
 
     $empty.classList.toggle('hidden', rows.length > 0);
+    if ($count) {
+      const voterTotal = allUsers.filter(function (u) { return u.role === 'voter'; }).length;
+      $count.textContent = 'Showing ' + rows.length + ' of ' + allUsers.length + ' accounts (' + voterTotal + ' registered voters). List refreshes automatically.';
+    }
 
     $tbody.innerHTML = rows
       .sort(function (a, b) { return (a.createdAt ? b.createdAt.seconds - a.createdAt.seconds : 0) || (a.fullName || '').localeCompare(b.fullName || ''); })
@@ -341,6 +356,10 @@
   // ---------------------------------------------------------------
   $search.addEventListener('input', function () { render($search.value); });
   if ($studentSearch) $studentSearch.addEventListener('input', function () { renderStudents($studentSearch.value); });
+  if ($roleFilter) $roleFilter.addEventListener('change', function () {
+    roleFilter = $roleFilter.value || 'voter';
+    render($search.value);
+  });
 
   // Import students wiring
   const $importModal = document.getElementById('importModal');
