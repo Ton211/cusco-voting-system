@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Students — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Students</h1>
+          <p>Import the official student list. Only listed adm numbers can self register.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-outline" id="openAddBtn">Add Student</button>
+          <button class="btn btn-primary" id="openImportBtn">Import Students</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Student List (whitelist for self registration)</span>
+          <span class="search-box">
+            <input class="input" type="search" id="studentSearchBox" placeholder="Search adm or name…">
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Adm Number</th>
+                <th>Name</th>
+                <th>Registered</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="studentEmpty">No students imported yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add single student modal -->
+  <div class="modal" id="addModal">
+    <div class="modal-card">
+      <h2>Add Student</h2>
+      <div class="form-group mb-12">
+        <label for="addAdm">Adm number</label>
+        <input class="input" id="addAdm" placeholder="e.g. ADM001">
+      </div>
+      <div class="form-group mb-12">
+        <label for="addName">Full name</label>
+        <input class="input" id="addName" placeholder="e.g. Jane Doe">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="addModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="doAddBtn">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit student modal -->
+  <div class="modal" id="editStudentModal">
+    <div class="modal-card">
+      <h2>Edit Student</h2>
+      <p class="muted mb-12" id="editStudentFor"></p>
+      <div class="form-group mb-12">
+        <label for="editStudentName">Full name</label>
+        <input class="input" id="editStudentName" placeholder="e.g. Jane Doe">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="editStudentModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="doEditStudentBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import students modal -->
+  <div class="modal" id="importModal">
+    <div class="modal-card">
+      <h2>Import Students</h2>
+      <p class="muted mb-12">Paste one student per line as: ADM001, Full Name. Or choose a .csv file with admNumber,fullName columns.</p>
+      <div class="form-group mb-12">
+        <label for="importFile">CSV file (optional)</label>
+        <input class="input" type="file" id="importFile" accept=".csv,.txt">
+      </div>
+      <div class="form-group mb-12">
+        <label for="importText">Student lines</label>
+        <textarea class="input" id="importText" rows="8" placeholder="ADM001, Jane Doe&#10;ADM002, John Smith"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="importModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="doImportBtn">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/students.js"></script>
+</body>
+</html>

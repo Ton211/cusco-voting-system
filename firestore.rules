@@ -1,0 +1,213 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Role is enforced via Auth custom claims (set by Cloud Functions).
+    function isVoter() {
+      return isSignedIn() && request.auth.token.role == 'voter';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role in ['admin', 'superadmin'];
+    }
+
+    function isOwnUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Shape validation for the few collections clients are permitted to
+    // write. The server (Admin SDK / Cloud Functions) bypasses rules
+    // entirely, so these helpers only describe what the admin frontend
+    // is allowed to send.
+
+    function isString(value) {
+      return value is string;
+    }
+
+    function isNumber(value) {
+      return value is number;
+    }
+
+    function isBool(value) {
+      return value is bool;
+    }
+
+    function isTimestamp(value) {
+      return value is timestamp;
+    }
+
+    // ------------------------------------------------------------------
+    // Users
+    // Server-write-only. Read: owner or admin.
+    // Profile docs, the votedIn map and receipts are written exclusively
+    // by Cloud Functions (registerUser, updateUser, createVote). Clients
+    // therefore cannot forge a profile, flip a role, clear a votedIn
+    // flag, or hand themselves a receipt.
+    // ------------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwnUser(userId) || isAdmin();
+      allow write: if false;
+
+      match /receipts/{receiptId} {
+        allow read: if isOwnUser(userId) || isAdmin();
+        allow write: if false; // only the createVote Cloud Function writes these
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Elections
+    // Voters may read (they need to see the active election). All writes
+    // go through the saveElection Cloud Function so the single-active
+    // invariant and window/times validation cannot be bypassed.
+    // ------------------------------------------------------------------
+    match /elections/{electionId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Positions
+    // Admins manage the ballot blueprint directly. The write shape is
+    // validated so a ballot cannot be corrupted: fixed key set, typed
+    // fields, and an immutable electionId (a position can never be moved
+    // to another election after creation).
+    // ------------------------------------------------------------------
+    function validPositionWrite(isCreate) {
+      let data = request.resource.data;
+      let allowedKeys = ['electionId', 'name', 'order'];
+      return isCreate
+        ? (data.keys().hasOnly(allowedKeys)
+          && isString(data.electionId)
+          && isString(data.name)
+          && isNumber(data.order))
+        : (data.keys().hasOnly(allowedKeys)
+          && (!('electionId' in data) || data.electionId == resource.data.electionId)
+          && (!('name' in data) || isString(data.name))
+          && (!('order' in data) || isNumber(data.order)));
+    }
+
+    match /positions/{positionId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && validPositionWrite(true);
+      allow update: if isAdmin() && validPositionWrite(false);
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Candidates
+    // Admins manage contenders directly. electionId and positionId are
+    // immutable binding keys; the write shape is validated.
+    // ------------------------------------------------------------------
+    function validCandidateWrite(isCreate) {
+      let data = request.resource.data;
+      let allowedKeys = ['electionId', 'positionId', 'name', 'photo', 'description', 'status', 'createdAt'];
+      return isCreate
+        ? (data.keys().hasOnly(allowedKeys)
+          && isString(data.electionId)
+          && isString(data.positionId)
+          && isString(data.name)
+          && isString(data.status)
+          && data.status in ['active', 'inactive']
+          && (!('photo' in data) || isString(data.photo) || data.photo == null)
+          && (!('description' in data) || isString(data.description))
+          && (!('createdAt' in data) || isTimestamp(data.createdAt)))
+        : (data.keys().hasOnly(allowedKeys)
+          && (!('electionId' in data) || data.electionId == resource.data.electionId)
+          && (!('positionId' in data) || data.positionId == resource.data.positionId)
+          && (!('name' in data) || isString(data.name))
+          && (!('status' in data) || (isString(data.status) && data.status in ['active', 'inactive']))
+          && (!('photo' in data) || isString(data.photo) || data.photo == null)
+          && (!('description' in data) || isString(data.description))
+          && (!('createdAt' in data) || data.createdAt == resource.data.createdAt));
+    }
+
+    match /candidates/{candidateId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && validCandidateWrite(true);
+      allow update: if isAdmin() && validCandidateWrite(false);
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Votes (aggregate results only)
+    // Written exclusively by the server-side createVote Cloud Function.
+    // Clients can never write here -- even admins cannot forge ballots.
+    // Admins may always read. Voters may read only after the admin
+    // releases results (settings/resultsVisibility.hideUntilClose false).
+    // ------------------------------------------------------------------
+    function resultsReleased() {
+      return exists(/databases/$(database)/documents/settings/resultsVisibility)
+        && get(/databases/$(database)/documents/settings/resultsVisibility).data.hideUntilClose == false;
+    }
+
+    match /votes/{electionId} {
+      allow read: if isAdmin() || (isVoter() && resultsReleased());
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Settings
+    // Only the known settings document may be written (by admins), and
+    // its shape is pinned so arbitrary documents cannot be planted.
+    // ------------------------------------------------------------------
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+    }
+
+    function validSettingsWrite() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['hideUntilClose', 'electionId', 'updatedAt'])
+        && isBool(data.hideUntilClose)
+        && (data.electionId == null || isString(data.electionId))
+        && isTimestamp(data.updatedAt);
+    }
+
+    match /settings/resultsVisibility {
+      allow get: if isSignedIn();
+      allow write: if isAdmin() && validSettingsWrite();
+    }
+
+    // Staff username alias (e.g. CUSCO -> staff email). Written only by
+    // superadmins via the setStaffAlias function path; clients never read
+    // it directly (resolveStaffUsername runs server-side).
+    match /settings/staffAlias/aliases/{aliasId} {
+      allow read: if isSignedIn() && request.auth.token.role == 'superadmin';
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Student list (admin-imported whitelist for self registration).
+    // Admins may read and manage. Clients cannot read: self registration
+    // is checked server-side by Cloud Functions (Admin SDK bypasses rules).
+    // ------------------------------------------------------------------
+    function validStudentWrite() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['admNumber', 'fullName', 'importedAt', 'importedBy', 'used', 'registeredUid'])
+        && isString(data.admNumber)
+        && isString(data.fullName)
+        && isBool(data.used);
+    }
+
+    match /studentList/{admId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validStudentWrite();
+      allow update: if isAdmin() && validStudentWrite();
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Global guard: any collection not explicitly matched above is
+    // off-limits to clients.
+    // ------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

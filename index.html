@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="public">
+
+  <main style="min-height:100vh; display:flex; align-items:center;">
+    <div class="hero">
+      <div class="center-logo mb-12">
+        <img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="96" height="96">
+        <p>Voting System</p>
+      </div>
+      <div class="center-card" id="loginCard" style="margin-top:18px; text-align:left;">
+        <div id="landingError" class="error-box"></div>
+        <form id="landingLoginForm" novalidate>
+          <div class="form-group mb-12">
+            <label for="landingAdm">Adm number</label>
+            <input class="input" type="text" id="landingAdm" placeholder="e.g. ADM001" autocomplete="username">
+          </div>
+          <div class="form-group mb-12">
+            <label for="landingPassword">Password</label>
+            <input class="input" type="password" id="landingPassword" placeholder="Your password or adm number" autocomplete="current-password">
+          </div>
+          <button type="submit" id="landingLoginBtn" class="btn btn-primary" style="width:100%;">Log In</button>
+        </form>
+        <div class="center mt-16" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <a href="#" id="landingForgot" style="font-size:13px;">Forgot Password?</a>
+          <a href="#" id="showRegisterBtn" class="btn btn-outline btn-sm" style="text-decoration:none; border:1px solid #4f46e5; color:#4f46e5;">Register as a voter</a>
+        </div>
+      </div>
+
+      <div class="center-card hidden" id="registerCard" style="margin-top:18px; text-align:left;">
+        <div id="landingRegBox" class="info-box"></div>
+        <form id="landingRegisterForm" novalidate>
+          <div class="form-group mb-12">
+            <label for="landingRegAdm">Adm number</label>
+            <input class="input" type="text" id="landingRegAdm" placeholder="e.g. ADM001" autocomplete="username">
+          </div>
+          <button type="submit" id="landingRegisterBtn" class="btn btn-outline" style="width:100%;">Register</button>
+        </form>
+        <p class="muted center" style="font-size:12px; margin-top:8px;">Works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
+        <div class="center mt-16">
+          <button class="btn btn-ghost btn-sm" id="showLoginBtn" type="button">Back to Log In</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/landing.js"></script>
+</body>
+</html>

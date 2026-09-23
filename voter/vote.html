@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="voter" class="auth-hidden">
+
+  <div class="voter-shell">
+    <header class="topbar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <div class="topbar-right">
+        <span>Welcome, <strong id="userName">…</strong></span>
+        <button class="btn-logout" id="logoutBtn" style="width:auto; margin:0;">Log Out</button>
+      </div>
+    </header>
+
+    <main style="width:100%; max-width:720px; margin:0 auto; padding:26px 16px;">
+      <div class="page-head">
+        <div>
+          <h1>Cast Your Vote</h1>
+          <p id="voteElectionName">—</p>
+        </div>
+        <span class="badge scheduled" id="voteProgress">—</span>
+      </div>
+
+      <div id="voteBody"><p class="muted center">Loading ballot…</p></div>
+
+      <div class="card mt-16">
+        <div class="center">
+          <button class="btn btn-primary btn-lg" id="continueBtn" disabled>
+            Continue
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/voter-common.js"></script>
+  <script src="/js/voter/voter-shared.js"></script>
+  <script src="/js/voter/vote.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+node_modules/
+.firebase/
+*.log
+.DS_Store
+Thumbs.db
+
+# Cloud Functions / credentials — NEVER commit these
+functions/serviceAccount*.json
+functions/*.service-account.json
+**/*serviceAccount*.json
+*.pem
+*.p12
+*.key
+
+# Environment / local config
+.env
+.env.*
+!.env.example
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase auth exports / data dumps
+users.json
+users-*.json
+auth-export/
+*.zip
+*.bak
+
+# Cloudflare Pages local dev / privacy
+.wrangler/
+functions/.ops/
+
+# VSCode local settings (optional, uncomment to ignore)
+# .vscode/

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Overview of the CUSCO voting system.</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="statGrid">
+        <div class="stat"><div class="num">…</div><div class="label">Total Voters</div></div>
+        <div class="stat"><div class="num">…</div><div class="label">Active Candidates</div></div>
+        <div class="stat"><div class="num green">…</div><div class="label">Votes Cast</div></div>
+        <div class="stat"><div class="num amber">…</div><div class="label">Voting Turnout</div></div>
+      </div>
+
+      <div class="card" id="electionCard">
+        <div class="card-title">
+          <span>Active Election</span>
+          <span id="electionStatusBadge"></span>
+        </div>
+        <div id="electionInfo"><p class="muted">No election is currently active.</p></div>
+      </div>
+
+      <div class="card" id="nextStepsCard">
+        <div class="card-title"><span>Quick Actions</span></div>
+        <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+          <a class="btn btn-outline" href="/admin/voters.html">Register Voters</a>
+          <a class="btn btn-outline" href="/admin/candidates.html">Manage Candidates</a>
+          <a class="btn btn-outline" href="/admin/elections.html">Manage Elections</a>
+          <a class="btn btn-outline" href="/admin/results.html">View Results</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/dashboard.js"></script>
+</body>
+</html>

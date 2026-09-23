@@ -1,0 +1,19 @@
+# CUSCO Voting System — Cloudflare Pages security headers (all paths)
+
+# CSP sources are written for this app's actual third-party hosts only:
+#   Firebase compat SDK (www.gstatic.com), Firestore / Auth / Storage /
+#   Functions backends, storage bucket photo delivery, and the App Check
+#   ReCaptcha providers. blob: is required by the Firebase SDK's lazy
+#   module loading. 'unsafe-inline' stays in style-src because the admin
+#   pages inject <style> nodes at runtime; no inline <script> remains in
+#   the app, so script-src has no 'unsafe-inline'/'unsafe-eval'.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), fullscreen=(self)
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob: https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://storage.googleapis.com https://www.gstatic.com https://www.google.com https://us-central1-cusco-voting-2026.cloudfunctions.net blob:; frame-src https://www.google.com https://recaptcha.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+*/

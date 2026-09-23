@@ -1,0 +1,27 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Role is enforced via Auth custom claims (same as Firestore).
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role in ['admin', 'superadmin'];
+    }
+
+    match /candidate-photos/{fileName} {
+      // Any signed-in user may view candidate photos used on ballots.
+      allow read: if request.auth != null;
+
+      // Only admins may upload, and only safe, bounded image files.
+      allow write: if isAdmin()
+        && request.resource.size >= 1
+        && request.resource.size <= 2 * 1024 * 1024
+        && (request.resource.contentType.matches('image/(png|jpe?g|webp|gif|avif|bmp)')
+            || request.resource.contentType.matches('application/octet-stream'));
+    }
+
+    // Nothing else in the bucket is touchable by clients.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

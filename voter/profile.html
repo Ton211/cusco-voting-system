@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="voter" class="auth-hidden">
+
+  <div class="voter-shell">
+    <header class="topbar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <div class="topbar-right">
+        <span>Welcome, <strong id="userName">…</strong></span>
+        <button class="btn-logout" id="logoutBtn" style="width:auto; margin:0;">Log Out</button>
+      </div>
+    </header>
+
+    <main class="voter-main">
+      <div class="center-card wide" id="profileCard">
+        <div class="center-logo mb-12"><p>YOUR ACCOUNT</p><h1>Profile</h1></div>
+        <div id="profileBody"><p class="muted center">Loading…</p></div>
+        <div style="border-top:1px solid var(--border); margin-top:18px; padding-top:16px;">
+          <h2 style="font-size:16px; margin-bottom:10px;">Change password</h2>
+          <div id="pwError" class="error-box"></div>
+          <form id="pwForm" novalidate>
+            <div class="form-group mb-12">
+              <label for="pwNew">New password</label>
+              <input class="input" type="password" id="pwNew" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="form-group mb-12">
+              <label for="pwConfirm">Confirm new password</label>
+              <input class="input" type="password" id="pwConfirm" minlength="6" autocomplete="new-password">
+            </div>
+            <button type="submit" id="pwBtn" class="btn btn-primary" style="width:100%;">Save New Password</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/voter-common.js"></script>
+  <script src="/js/voter/voter-shared.js"></script>
+  <script src="/js/voter/profile.js"></script>
+</body>
+</html>

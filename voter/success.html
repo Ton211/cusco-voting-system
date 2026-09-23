@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote Submitted — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="voter" class="auth-hidden">
+
+  <div class="voter-shell">
+    <header class="topbar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <div class="topbar-right">
+        <span>Welcome, <strong id="userName">…</strong></span>
+        <button class="btn-logout" id="logoutBtn" style="width:auto; margin:0;">Log Out</button>
+      </div>
+    </header>
+
+    <main class="voter-main">
+      <div class="center-card">
+        <div class="spotlight">
+          <div class="icon">&#10003;</div>
+          <h1 style="letter-spacing:.06em;">VOTE SUBMITTED</h1>
+          <p class="muted mt-16">Your vote has been successfully recorded.</p>
+
+          <div class="mt-16">
+            <span class="receipt" id="reference">CUSCO-……</span>
+          </div>
+          <p class="muted mt-16" style="font-size:13px;">
+            This is your reference number. It is proof that your vote was
+            recorded — it does not reveal who you voted for.
+          </p>
+          <p class="muted" style="font-size:13px;">
+            Thank you for voting.
+          </p>
+
+          <div class="center mt-16">
+            <a class="btn btn-outline" href="/voter/dashboard.html">Back to Dashboard</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/voter-common.js"></script>
+  <script src="/js/voter/success.js"></script>
+</body>
+</html>

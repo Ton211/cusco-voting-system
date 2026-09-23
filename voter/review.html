@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Your Vote — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="voter" class="auth-hidden">
+
+  <div class="voter-shell">
+    <header class="topbar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <div class="topbar-right">
+        <span>Welcome, <strong id="userName">…</strong></span>
+        <button class="btn-logout" id="logoutBtn" style="width:auto; margin:0;">Log Out</button>
+      </div>
+    </header>
+
+    <main style="width:100%; max-width:560px; margin:0 auto; padding:26px 16px;">
+      <div class="page-head">
+        <div>
+          <h1>Review Your Vote</h1>
+          <p id="reviewElectionName">—</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="reviewRows"></div>
+        <div class="alert alert-warn mt-16">
+          Your vote cannot be changed after submission.
+        </div>
+        <div class="center" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px;">
+          <button class="btn btn-outline" id="backBtn">Go Back</button>
+          <button class="btn btn-primary" id="submitBtn">Submit Vote</button>
+        </div>
+      </div>
+
+      <!-- Confirm modal -->
+      <div class="modal" id="confirmModal">
+        <div class="modal-card">
+          <h2>Are you sure?</h2>
+          <p class="muted">Your vote will be permanently submitted. You will not be able to change it afterwards.</p>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmBtn">Confirm Vote</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/voter-common.js"></script>
+  <script src="/js/voter/voter-shared.js"></script>
+  <script src="/js/voter/review.js"></script>
+</body>
+</html>

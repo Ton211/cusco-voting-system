@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="login" style="min-height:100vh; display:flex; align-items:center; background:var(--bg);">
+
+  <div class="center-card">
+    <div class="center-logo mb-12">
+      <img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="96" height="96">
+      <h1>CUSCO</h1>
+      <p>Voting System</p>
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-group mb-12">
+        <label for="email">Adm number</label>
+        <input class="input" type="text" id="email" name="username" placeholder="e.g. ADM001" autocomplete="username" required>
+        <p class="muted" style="font-size:12px; margin-top:4px;">First login: use your adm number as both username and password.</p>
+      </div>
+
+      <div class="form-group mb-12">
+        <label for="password">Password</label>
+        <input class="input" type="password" id="password" name="password" placeholder="Your password or adm number" autocomplete="current-password" required>
+      </div>
+
+      <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;">
+        Log In
+      </button>
+    </form>
+
+    <div class="center mt-16">
+      <a href="#" id="forgotLink" style="font-size:13px;">Forgot Password?</a>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:18px; padding-top:16px;">
+      <p class="center" style="font-weight:700; margin-bottom:8px;">New here? Register as a voter</p>
+      <div id="regBox" class="info-box"></div>
+      <form id="registerForm" novalidate>
+        <div class="form-group mb-12">
+          <label for="regAdm">Adm number</label>
+          <input class="input" type="text" id="regAdm" placeholder="e.g. ADM001" autocomplete="username">
+        </div>
+        <button type="submit" id="registerBtn" class="btn btn-outline" style="width:100%;">
+          Register
+        </button>
+      </form>
+      <p class="muted center" style="font-size:12px; margin-top:8px;">Registration works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
+    </div>
+  </div>
+
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/login.js"></script>
+</body>
+</html>

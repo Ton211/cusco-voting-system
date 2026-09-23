@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Users</h1>
+          <p>Staff accounts with admin powers. Only superadmins manage these.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="openCreateBtn">+ Create Staff</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Staff Accounts</span>
+          <span class="search-box">
+            <input class="input" type="search" id="searchBox" placeholder="Search…">
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="emptyState">No staff accounts found.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create staff modal -->
+  <div class="modal" id="createModal">
+    <div class="modal-card">
+      <h2>Create Staff</h2>
+      <form id="createForm">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="staffName">Full Name</label>
+            <input class="input" id="staffName" required>
+          </div>
+          <div class="form-group">
+            <label for="staffEmail">Email</label>
+            <input class="input" type="email" id="staffEmail" required>
+          </div>
+          <div class="form-group">
+            <label for="staffRole">Role</label>
+            <select class="input" id="staffRole">
+              <option value="admin">Admin</option>
+              <option value="superadmin">Super Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="staffPassword">Temporary Password</label>
+            <input class="input" type="password" id="staffPassword" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label for="staffConfirm">Confirm Password</label>
+            <input class="input" type="password" id="staffConfirm" minlength="6" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="createModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Staff</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reset password modal -->
+  <div class="modal" id="resetModal">
+    <div class="modal-card">
+      <h2>Reset Password</h2>
+      <p class="muted mb-12" id="resetFor"></p>
+      <form id="resetForm">
+        <input type="hidden" id="resetUid">
+        <div class="form-group mb-12">
+          <label for="resetPassword">New Password</label>
+          <input class="input" type="password" id="resetPassword" minlength="6" required>
+        </div>
+        <div class="form-group mb-12">
+          <label for="resetConfirm">Confirm New Password</label>
+          <input class="input" type="password" id="resetConfirm" minlength="6" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="resetModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/users.js"></script>
+</body>
+</html>

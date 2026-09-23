@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voters — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Voters</h1>
+          <p>Register and manage voters and admins.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="openRegisterBtn">+ Register Voter</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Registered Voters</span>
+          <span class="search-box">
+            <input class="input" type="search" id="searchBox" placeholder="Search…">
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Adm Number</th>
+                <th>Name</th>
+                <th>Password</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="votersTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="emptyState">No voters found.</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Register modal -->
+  <div class="modal" id="registerModal">
+    <div class="modal-card">
+      <h2>Register Voter</h2>
+      <form id="registerForm">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="regFullName">Full Name</label>
+            <input class="input" id="regFullName" required>
+          </div>
+          <div class="form-group">
+            <label for="regVoterId">Adm number (username + first password)</label>
+            <input class="input" id="regVoterId" placeholder="e.g. ADM001" required>
+          </div>
+          <div class="form-group">
+            <label for="regEmail">Email (optional)</label>
+            <input class="input" type="email" id="regEmail" placeholder="Optional for student contact">
+          </div>
+          <div class="form-group">
+            <label for="regPhone">Phone Number</label>
+            <input class="input" id="regPhone" placeholder="07xxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label for="regGender">Gender</label>
+            <select class="input" id="regGender">
+              <option value="">—</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group full" id="admHint">
+            <p class="muted" style="font-size:13px;">The student signs in first time with adm number as username and password, then sets their own password. Passwords are never shown here, only the status below.</p>
+          </div>
+          <div class="form-group hidden" id="staffPwWrap">
+            <label for="regPassword">Temporary Password (staff only)</label>
+            <input class="input" type="password" id="regPassword" minlength="6" placeholder="At least 6 characters">
+          </div>
+          <div class="form-group hidden" id="regRoleWrap">
+            <label for="regRole">Role</label>
+            <select class="input" id="regRole">
+              <option value="voter">Voter</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="registerModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Voter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div class="modal" id="editModal">
+    <div class="modal-card">
+      <h2>Edit Voter</h2>
+      <form id="editForm">
+        <input type="hidden" id="editUid">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="editFullName">Full Name</label>
+            <input class="input" id="editFullName" required>
+          </div>
+          <div class="form-group">
+            <label for="editEmail">Email</label>
+            <input class="input" type="email" id="editEmail" required>
+          </div>
+          <div class="form-group">
+            <label for="editPhone">Phone Number</label>
+            <input class="input" id="editPhone">
+          </div>
+          <div class="form-group full">
+            <label for="editGender">Gender</label>
+            <select class="input" id="editGender">
+              <option value="">—</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="editModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- View modal -->
+  <div class="modal" id="viewModal">
+    <div class="modal-card">
+      <h2>Voter Details</h2>
+      <div id="viewDetails"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="viewModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset password modal -->
+  <div class="modal" id="resetModal">
+    <div class="modal-card">
+      <h2>Reset Password</h2>
+      <p class="muted mb-12" id="resetFor"></p>
+      <form id="resetForm">
+        <input type="hidden" id="resetUid">
+        <p class="muted" style="font-size:13px; margin-bottom:10px;">Leave blank to restore adm number and force the student to set their own password.</p>
+        <div class="form-group mb-12">
+          <label for="resetPassword">New Password (blank = adm number)</label>
+          <input class="input" type="password" id="resetPassword" minlength="6">
+        </div>
+        <div class="form-group mb-12">
+          <label for="resetConfirm">Confirm New Password</label>
+          <input class="input" type="password" id="resetConfirm" minlength="6">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="resetModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/voters.js"></script>
+</body>
+</html>

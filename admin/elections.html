@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Election — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Election</h1>
+          <p>Create elections and open/close voting. Positions live under Position.</p>
+        </div>
+        <button class="btn btn-primary" id="openCreateBtn">+ Create Election</button>
+      </div>
+
+      <div class="alert alert-info" id="singleActiveNote">
+        Only one election can be <strong>active</strong> at a time — opening one automatically closes any other active election.
+      </div>
+
+      <div id="electionsList">
+        <div class="empty">No elections yet.</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Election modal (create + edit) -->
+  <div class="modal" id="electionModal">
+    <div class="modal-card">
+      <h2 id="electionModalTitle">Create Election</h2>
+      <form id="electionForm">
+        <input type="hidden" id="electionDocId">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="eleName">Election Name</label>
+            <input class="input" id="eleName" placeholder="e.g. CUSCO 2026 Election" required>
+          </div>
+          <div class="form-group full">
+            <label for="eleDescription">Description</label>
+            <textarea class="input" id="eleDescription"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="eleStart">Start Date &amp; Time</label>
+            <input class="input" type="datetime-local" id="eleStart" required>
+          </div>
+          <div class="form-group">
+            <label for="eleEnd">End Date &amp; Time</label>
+            <input class="input" type="datetime-local" id="eleEnd" required>
+          </div>
+          <div class="form-group full">
+            <label for="eleStatus">Status</label>
+            <select class="input" id="eleStatus">
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="active">Active (opens voting now)</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="electionModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Election</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/elections.js"></script>
+</body>
+</html>

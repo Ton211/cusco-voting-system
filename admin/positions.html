@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Position — CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/users.html">Users</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Position</h1>
+          <p>Ballot positions stand alone here. Attach candidates to them under Candidates.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="openAddBtn">+ Add Position</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Positions</span>
+          <span class="search-box">
+            <input class="input" type="search" id="searchBox" placeholder="Search…">
+          </span>
+        </div>
+        <div class="card-title">
+          <span class="muted" style="font-size:13px;">Filter by election</span>
+          <select class="input" id="electionFilter" style="max-width:240px;">
+            <option value="">All elections</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Election</th>
+                <th>Order</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="positionsTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="emptyState">No positions yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add / Edit position modal -->
+  <div class="modal" id="positionModal">
+    <div class="modal-card">
+      <h2 id="positionModalTitle">Add Position</h2>
+      <form id="positionForm">
+        <input type="hidden" id="posDocId">
+        <div class="form-group mb-12">
+          <label for="posElection">Election</label>
+          <select class="input" id="posElection" required></select>
+        </div>
+        <div class="form-group mb-12">
+          <label for="posName">Position name</label>
+          <input class="input" id="posName" placeholder="e.g. President" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="positionModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="posSubmitBtn">Save Position</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/positions.js"></script>
+</body>
+</html>
