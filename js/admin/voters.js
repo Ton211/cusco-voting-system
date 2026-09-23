@@ -421,6 +421,7 @@
   // Esc / backdrop close for modals
   [['registerModal'], ['editModal'], ['viewModal'], ['resetModal'], ['importModal']].forEach(function (pair) {
     const m = document.getElementById(pair[0]);
+    if (!m) return;
     m.addEventListener('click', function (e) {
       if (e.target === m) closeModal(pair[0]);
     });

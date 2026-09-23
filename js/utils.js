@@ -106,13 +106,13 @@ function callFriendly(err) {
 }
 
 // ---------------------------------------------------------------
-//  Live auto refresh (2s polling with safety guards).
-//  Re-runs reload() every 2 seconds so data stays accurate without
+//  Live auto refresh (3s polling with safety guards).
+//  Re-runs reload() every 3 seconds so data stays accurate without
 //  manual refresh. Skips ticks while the tab is hidden, a dialog is
 //  open, the user is typing, or a previous tick is still running.
 // ---------------------------------------------------------------
 function autoLive(reload, ms) {
-  const every = ms || 2000;
+  const every = ms || 3000;
   let busy = false;
   let timer = null;
   async function tick() {
