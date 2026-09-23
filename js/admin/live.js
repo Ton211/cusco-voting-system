@@ -23,6 +23,8 @@
   let totalVotes = 0;
   let openPosId = null;
   let timer = null;
+  let countdownTarget = 0;
+  let countdownTimer = null;
 
   function posVotes(posId) {
     const m = results[posId] || {};
@@ -41,10 +43,25 @@
 
   async function refresh() {
     if (document.hidden) return;
-    const aSnap = await DB.collection('elections').where('status', '==', 'active').limit(1).get();
+    const [aSnap, sSnap] = await Promise.all([
+      DB.collection('elections').where('status', '==', 'active').limit(1).get(),
+      DB.collection('elections').where('status', '==', 'scheduled').get().catch(function () { return null; })
+    ]);
     if (!aSnap.docs.length) {
       election = null;
-      renderBlank();
+      // No open election: show the next scheduled one with a countdown.
+      let upcoming = null;
+      if (sSnap) {
+        let best = 0;
+        sSnap.docs.forEach(function (x) {
+          const v = x.data() || {};
+          const startMs = tsToDate(v.startTime).getTime() || 0;
+          if (!startMs) return;
+          if (!upcoming || startMs < best) { upcoming = Object.assign({ id: x.id }, v); best = startMs; }
+        });
+      }
+      if (upcoming) renderUpcoming(upcoming);
+      else renderBlank();
       return;
     }
     const d = aSnap.docs[0];
@@ -78,11 +95,53 @@
   }
 
   function renderBlank() {
+    countdownTarget = 0;
     $status.textContent = 'No open election. Live graphs appear here once voting opens.';
     $badge.innerHTML = '<span class="badge draft">Offline</span>';
     $grid.innerHTML = '';
     $blank.classList.remove('hidden');
     if (openPosId) { openPosId = null; closeModal('graphModal'); }
+  }
+
+  function fmtCountdown(ms) {
+    if (ms < 0) ms = 0;
+    const s = Math.floor(ms / 1000);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const pad = function (n) { return String(n).padStart(2, '0'); };
+    return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
+  }
+
+  function tickCountdown() {
+    const el = document.getElementById('countdownClock');
+    if (!el || !countdownTarget) return;
+    const diff = countdownTarget - Date.now();
+    el.textContent = diff > 0 ? fmtCountdown(diff) : 'Opening now...';
+  }
+
+  function renderUpcoming(up) {
+    if (openPosId) { openPosId = null; closeModal('graphModal'); }
+    const startMs = tsToDate(up.startTime).getTime() || 0;
+    const endMs = tsToDate(up.endTime).getTime() || 0;
+    const nowMs = Date.now();
+    $blank.classList.add('hidden');
+    $badge.innerHTML = '<span class="badge scheduled">Upcoming</span>';
+    countdownTarget = startMs;
+    if (endMs && nowMs > endMs) {
+      $status.textContent = 'Upcoming election: ' + up.name;
+      $grid.innerHTML = '<div class="card"><div class="empty">This election window has ended. It is closing...</div></div>';
+      return;
+    }
+    $status.textContent = 'Upcoming election: ' + up.name + ' · Starts ' + fmtDateTime(up.startTime) + ' · Ends ' + fmtDateTime(up.endTime);
+    $grid.innerHTML =
+      '<div class="card center">' +
+      '<p class="muted text-sm">Voting opens in</p>' +
+      '<div id="countdownClock" class="countdown">Loading...</div>' +
+      '<p class="muted text-sm mt-16">Election: <strong>' + esc(up.name) + '</strong></p>' +
+      '</div>';
+    tickCountdown();
   }
 
   function renderLive() {
@@ -179,6 +238,10 @@
     });
   }).then(function () {
     timer = setInterval(function () { refresh().catch(function () {}); }, POLL_MS);
-    window.addEventListener('beforeunload', function () { if (timer) clearInterval(timer); });
+    countdownTimer = setInterval(tickCountdown, 1000);
+    window.addEventListener('beforeunload', function () {
+      if (timer) clearInterval(timer);
+      if (countdownTimer) clearInterval(countdownTimer);
+    });
   });
 })();

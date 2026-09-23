@@ -65,7 +65,12 @@
         '<a class="btn btn-primary btn-lg" href="/voter/vote.html">Start Voting</a>' +
         '</div>';
     } else {
-      html += '<div class="alert alert-warn center">Voting opens ' + fmtDateTime(activeElection.startTime) + ' and closes ' + fmtDateTime(activeElection.endTime) + '.</div>';
+      const endMs = tsToDate(activeElection.endTime).getTime();
+      if (!isNaN(endMs) && Date.now() > endMs) {
+        html += '<div class="alert alert-warn center">Voting for this election has closed. Results will be published by the admin.</div>';
+      } else {
+        html += '<div class="alert alert-warn center">Voting opens ' + fmtDateTime(activeElection.startTime) + ' and closes ' + fmtDateTime(activeElection.endTime) + '.</div>';
+      }
     }
 
     $body.innerHTML = html;

@@ -377,6 +377,9 @@ table.data tbody tr:hover { background: #f5f8fd; }
 .graph-count { font-weight: 800; font-size: 18px; color: var(--primary-ink); }
 .graph-pct { color: var(--muted); font-size: 12px; margin-left: 4px; }
 
+/* upcoming election countdown */
+.countdown { font-size: 44px; font-weight: 800; letter-spacing: .04em; color: var(--primary-ink); margin: 8px 0; font-variant-numeric: tabular-nums; }
+
 /* search box */
 .search-box { position: relative; max-width: 320px; }
 .search-box input { padding-left: 12px; }

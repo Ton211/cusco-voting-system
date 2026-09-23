@@ -817,7 +817,7 @@ function windowMs(ts) {
 
 // ---------------------------------------------------------------------
 //  enforceElectionWindows
-//  Runs every 5 minutes. Makes start/end times self executing:
+//  Runs every minute. Makes start/end times self executing:
 //  - an ACTIVE election past its end time is closed automatically
 //  - a SCHEDULED election whose window has arrived opens automatically,
 //    but only when no other election is still active, so overlapping
@@ -826,7 +826,7 @@ function windowMs(ts) {
 //  The createVote transaction independently refuses any vote outside
 //  the window, so timing stays strict even between scheduler ticks.
 // ---------------------------------------------------------------------
-exports.enforceElectionWindows = functions.pubsub.schedule('every 5 minutes').onRun(async () => {
+exports.enforceElectionWindows = functions.pubsub.schedule('every 1 minutes').onRun(async () => {
   const now = Date.now();
   const snap = await db.collection('elections').get();
   if (snap.empty) return null;
