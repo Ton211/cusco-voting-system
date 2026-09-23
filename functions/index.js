@@ -710,7 +710,7 @@ exports.saveElection = functions.https.onCall(async (data, context) => {
 
     await ref.update({
       name: name,
-      description: data.description !== undefined ? String(data.description || '').trim() : String(prev.description || ''),
+      description: admin.firestore.FieldValue.delete(),
       startTime: startTime,
       endTime: endTime,
       status: status,
@@ -736,7 +736,6 @@ exports.saveElection = functions.https.onCall(async (data, context) => {
 
   const fields = {
     name: name,
-    description: String(data.description || '').trim(),
     startTime: startTime,
     endTime: endTime,
     status: status,
@@ -808,6 +807,71 @@ async function applySingleActiveRule(keepId, newStatus) {
   });
   await batch.commit();
 }
+
+function windowMs(ts) {
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  const d = ts instanceof Date ? ts : new Date(ts);
+  return d.getTime() || 0;
+}
+
+// ---------------------------------------------------------------------
+//  enforceElectionWindows
+//  Runs every 5 minutes. Makes start/end times self executing:
+//  - an ACTIVE election past its end time is closed automatically
+//  - a SCHEDULED election whose window has arrived opens automatically,
+//    but only when no other election is still active, so overlapping
+//    windows never silently close a valid election
+//  - a SCHEDULED election whose end already passed is closed directly
+//  The createVote transaction independently refuses any vote outside
+//  the window, so timing stays strict even between scheduler ticks.
+// ---------------------------------------------------------------------
+exports.enforceElectionWindows = functions.pubsub.schedule('every 5 minutes').onRun(async () => {
+  const now = Date.now();
+  const snap = await db.collection('elections').get();
+  if (snap.empty) return null;
+
+  const batch = db.batch();
+  let changed = 0;
+  let activeId = null;
+
+  // Pass 1: close every active election past its end time.
+  snap.docs.forEach(function (doc) {
+    const e = doc.data() || {};
+    if (e.status !== 'active') return;
+    const endMs = windowMs(e.endTime);
+    if (endMs && now > endMs) {
+      batch.update(doc.ref, { status: 'closed', updatedAt: serverNow() });
+      changed++;
+    } else if (!activeId) {
+      activeId = doc.id;
+    }
+  });
+
+  // Pass 2: open the earliest ready scheduled election, or retire
+  // scheduled elections whose window already passed.
+  const ready = [];
+  snap.docs.forEach(function (doc) {
+    const e = doc.data() || {};
+    if (e.status !== 'scheduled') return;
+    const startMs = windowMs(e.startTime);
+    const endMs = windowMs(e.endTime);
+    if (endMs && now > endMs) {
+      batch.update(doc.ref, { status: 'closed', updatedAt: serverNow() });
+      changed++;
+    } else if (startMs && now >= startMs && (!endMs || now <= endMs)) {
+      ready.push({ ref: doc.ref, startMs: startMs });
+    }
+  });
+  ready.sort(function (a, b) { return a.startMs - b.startMs; });
+  if (ready.length && !activeId) {
+    batch.update(ready[0].ref, { status: 'active', updatedAt: serverNow() });
+    changed++;
+  }
+
+  if (changed) await batch.commit();
+  return null;
+});
 
 // ---------------------------------------------------------------------
 //  createVote :  the secure one-person/one-vote transaction

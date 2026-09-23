@@ -101,7 +101,9 @@ Afterwards, use the Voters page (as Super Admin) to create **Admins** and
 ## 5. The daily flow
 
 1. **Admin → Elections** — create an election (name, window, status) and add
-   ballot positions (President, Secretary, …).
+   ballot positions (President, Secretary, …). A **scheduled** election
+   opens itself at its start time and closes itself at its end time;
+   votes are only ever accepted inside the window.
 2. **Admin → Candidates** — register candidates per position + photo.
 3. **Admin → Voters** — register voters (emails + password). A Voter ID is
    auto-generated.

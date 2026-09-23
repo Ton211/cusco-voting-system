@@ -37,7 +37,7 @@
       </div>
 
       <div class="alert alert-info" id="singleActiveNote">
-        Only one election can be <strong>active</strong> at a time. Opening one automatically closes any other active election.
+        Only one election can be <strong>active</strong> at a time. A <strong>scheduled</strong> election opens itself when its start time arrives and closes itself when its end time arrives. Opening one manually closes any other active election.
       </div>
 
       <div id="electionsList">
@@ -56,10 +56,6 @@
           <div class="form-group full">
             <label for="eleName">Election Name</label>
             <input class="input" id="eleName" placeholder="e.g. CUSCO 2026 Election" required>
-          </div>
-          <div class="form-group full">
-            <label for="eleDescription">Description</label>
-            <textarea class="input" id="eleDescription"></textarea>
           </div>
           <div class="form-group">
             <label for="eleStart">Start Date &amp; Time</label>

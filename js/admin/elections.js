@@ -36,7 +36,7 @@
 
     eSnap.docs.forEach(function (d) {
       const x = d.data();
-      elections.push({ id: d.id, name: x.name, description: x.description || '', startTime: x.startTime, endTime: x.endTime, status: x.status });
+      elections.push({ id: d.id, name: x.name, startTime: x.startTime, endTime: x.endTime, status: x.status });
     });
     elections.sort(function (a, b) {
       return (b.startTime && a.startTime) ? b.startTime.seconds - a.startTime.seconds : 0;
@@ -63,8 +63,7 @@
         '<button class="btn btn-danger-outline btn-sm" data-action="delete" data-eid="' + esc(e.id) + '">Delete</button>' +
         '</div>' +
         '</div>' +
-        '<div class="muted mb-12">' + esc(e.description || 'No description') + '</div>' +
-        '<div class="muted" style="font-size:13px;">Open: <strong>' + fmtDateTime(e.startTime) + '</strong> · Closes: <strong>' + fmtDateTime(e.endTime) + '</strong></div>' +
+        '<div class="muted" style="font-size:13px;">Voting window: <strong>' + fmtDateTime(e.startTime) + '</strong> to <strong>' + fmtDateTime(e.endTime) + '</strong></div>' +
         '</div>'
       );
     }).join('');
@@ -146,7 +145,6 @@
       document.getElementById('electionDocId').value = e.id;
       document.getElementById('electionModalTitle').textContent = 'Edit Election';
       document.getElementById('eleName').value = e.name;
-      document.getElementById('eleDescription').value = e.description || '';
       const st = tsToDate(e.startTime);
       const en = tsToDate(e.endTime);
       document.getElementById('eleStart').value = toLocalInput(st);
@@ -177,7 +175,6 @@
     const payload = {
       id: id || null,
       name: document.getElementById('eleName').value.trim(),
-      description: document.getElementById('eleDescription').value.trim(),
       startTimeISO: dtLocalToISO(start),
       endTimeISO: dtLocalToISO(end),
       status: document.getElementById('eleStatus').value

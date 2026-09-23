@@ -22,6 +22,20 @@
       return;
     }
 
+    // Strict window: the ballot never opens outside the scheduled times,
+    // even if the status has not flipped yet.
+    const nowMs = Date.now();
+    const startMs = tsToDate(election.startTime).getTime();
+    const endMs = tsToDate(election.endTime).getTime();
+    if (!isNaN(startMs) && nowMs < startMs) {
+      $body.innerHTML = '<div class="alert alert-warn center">Voting opens ' + esc(fmtDateTime(election.startTime)) + '.</div>';
+      return;
+    }
+    if (!isNaN(endMs) && nowMs > endMs) {
+      $body.innerHTML = '<div class="alert alert-warn center">Voting for this election has closed.</div>';
+      return;
+    }
+
     if (profile.votedIn && profile.votedIn[election.id]) {
       location.replace('/voter/dashboard.html');
       return;

@@ -66,7 +66,7 @@
 
     const elections = electionsSnap.docs.map(function (d) {
       const x = d.data() || {};
-      return { id: d.id, name: x.name || 'Unnamed election', description: x.description || '', startTime: x.startTime, endTime: x.endTime, status: x.status || 'draft' };
+      return { id: d.id, name: x.name || 'Unnamed election', startTime: x.startTime, endTime: x.endTime, status: x.status || 'draft' };
     });
 
     const rank = { active: 0, scheduled: 1, draft: 2, closed: 3 };
@@ -126,7 +126,6 @@
         '<a class="btn btn-outline btn-sm" href="/admin/results.html?election=' + encodeURIComponent(e.id) + '">Results</a>' +
         '</div>' +
         '</div>' +
-        '<div class="muted mb-12">' + esc(e.description || 'No description') + '</div>' +
         '<div class="muted text-sm">Voting window: <strong>' + esc(fmtDateTime(e.startTime)) + '</strong> to <strong>' + esc(fmtDateTime(e.endTime)) + '</strong></div>' +
         '<div class="mt-16 text-sm">Votes cast: <strong>' + fmtNum(row.cast) + '</strong> · Turnout: <strong>' + row.turnout + '%</strong></div>' +
         '</div>'
