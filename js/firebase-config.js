@@ -31,4 +31,4 @@ const FIREBASE_FUNCTIONS_REGION = "us-central1";
 //  ?appcheck.debug=... to the URL) — see README §App Check.
 // ---------------------------------------------------------------------
 const FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY = null; // TODO: paste site key here
-const FIREBASE_APPCHECK_DEBUG = true; // set false before prod deployment; enables debug token logging when ?appcheck.debug= URL param is used
+const FIREBASE_APPCHECK_DEBUG = false; // prod: debug tokens off (set true only for local testing)
