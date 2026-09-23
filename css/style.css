@@ -364,6 +364,19 @@ table.data tbody tr:hover { background: #f5f8fd; }
 /* empty state */
 .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
 
+/* position cards (live page) */
+.pos-card { cursor: pointer; transition: border-color .15s, background .15s; }
+.pos-card:hover { border-color: var(--primary); background: #f7faff; }
+.pos-card .label strong { color: var(--text); }
+
+/* live graph rows */
+.graph-row { margin-bottom: 16px; }
+.graph-row:last-child { margin-bottom: 0; }
+.graph-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+.graph-cand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.graph-count { font-weight: 800; font-size: 18px; color: var(--primary-ink); }
+.graph-pct { color: var(--muted); font-size: 12px; margin-left: 4px; }
+
 /* search box */
 .search-box { position: relative; max-width: 320px; }
 .search-box input { padding-left: 12px; }
