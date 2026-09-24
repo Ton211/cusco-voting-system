@@ -149,8 +149,22 @@
     if (file.size > 2 * 1024 * 1024) throw new Error('Photo must be 2 MB or smaller.');
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const filePath = 'candidate-photos/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
-    await FB_STORAGE.ref(filePath).put(file);
+    // Timeout so a stalled Storage upload can never leave the form stuck on "Saving…".
+    const putPromise = FB_STORAGE.ref(filePath).put(file);
+    const timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('Photo upload timed out. Check your connection and Storage rules, then try again without a photo.')); }, 60000);
+    });
+    await Promise.race([putPromise, timeoutPromise]);
     return await FB_STORAGE.ref(filePath).getDownloadURL();
+  }
+
+  function withTimeout(promise, ms, message) {
+    return Promise.race([
+      promise,
+      new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error(message)); }, ms);
+      })
+    ]);
   }
 
   $form.addEventListener('submit', async function (e) {
@@ -166,6 +180,7 @@
     if (!data.name) { toast('Enter a candidate name.', 'error'); return; }
 
     const btn = $form.querySelector('button[type=submit]');
+    const originalText = id ? 'Save Changes' : 'Save Candidate';
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
@@ -173,21 +188,37 @@
       if (file) data.photo = await uploadPhoto(file);
 
       if (id) {
-        await DB.collection('candidates').doc(id).update(data);
-        toast('Candidate updated.', 'success');
+        await withTimeout(
+          DB.collection('candidates').doc(id).update(data),
+          30000,
+          'Update timed out. Check your connection and Firestore rules, then refresh to see if it saved.'
+        );
       } else {
         data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        await DB.collection('candidates').add(data);
-        toast('Candidate registered.', 'success');
+        await withTimeout(
+          DB.collection('candidates').add(data),
+          30000,
+          'Save timed out. Check your connection and Firestore rules, then refresh to see if the candidate was added.'
+        );
       }
+      // Success: close + confirm BEFORE refreshing, so a slow/failed
+      // refresh can never leave the form stuck on "Saving…" or hide
+      // the fact that the write actually succeeded.
       closeModal('candidateModal');
-      await loadMeta();
-      render($search.value.toLowerCase().trim());
+      toast(id ? 'Candidate updated.' : 'Candidate registered.', 'success');
+      try {
+        await loadMeta();
+        render($search.value.toLowerCase().trim());
+      } catch (refreshErr) {
+        console.error('Candidate saved but list refresh failed:', refreshErr);
+        toast('Saved, but the list could not refresh: ' + friendlyError(refreshErr), 'error');
+      }
     } catch (err) {
-      toast(friendlyError(err) + (err.message && err.message.includes('2 MB') ? ' ' + err.message : ''), 'error');
+      console.error('Candidate save failed:', err);
+      toast(friendlyError(err), 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = id ? 'Save Changes' : 'Save Candidate';
+      btn.textContent = originalText;
     }
   });
 
