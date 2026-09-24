@@ -14,7 +14,7 @@
 
   document.getElementById('logoutLink').addEventListener('click', function (e) {
     e.preventDefault();
-    AUTH.signOut().then(function () { location.replace('/login.html'); });
+    AUTH.signOut().then(function () { location.replace('/'); });
   });
 
   form.addEventListener('submit', async function (e) {

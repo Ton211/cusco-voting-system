@@ -18,7 +18,7 @@ window.__auth = { user: null, role: null };
 
   // The staff portal is deliberately unadvertised (no link on the landing
   // page) so the admin login path is not trivially discoverable.
-  const VOTER_LOGIN = '/login.html';
+  const VOTER_LOGIN = '/';
   const STAFF_LOGIN = '/sys/cuscostaff9f2k41.html';
   const SET_PASSWORD = '/voter/set-password.html';
 

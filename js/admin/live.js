@@ -1,8 +1,10 @@
 // =====================================================================
 //  Admin: live voting graphs
-//  Position cards for the open election. Opening a card shows a live
-//  bar graph per candidate that refreshes every few seconds while
-//  voting is in progress. Blank when no election is open.
+//  Position cards for the open election, each with its live bar graph
+//  embedded inline so results are visible immediately — no clicking.
+//  Graphs refresh every few seconds while voting is in progress.
+//  The "Full graph" button still opens a focused modal per position.
+//  Blank when no election is open.
 // =====================================================================
 (function () {
   const $status = document.getElementById('liveStatus');
@@ -14,7 +16,7 @@
   const $graphBody = document.getElementById('graphBody');
   const $graphModal = document.getElementById('graphModal');
 
-  const POLL_MS = 3000;
+  const POLL_MS = 2000;
 
   let election = null;
   let positions = [];
@@ -144,6 +146,35 @@
     tickCountdown();
   }
 
+  // Inline bar rows for a position card: same markup as the modal
+  // graph so the live results are visible without any click.
+  function barRows(posId) {
+    const cands = (candidatesByPos[posId] || []).map(function (c) {
+      return { cand: c, votes: ((results[posId] || {})[c.id]) || 0 };
+    }).sort(function (a, b) { return b.votes - a.votes; });
+    const posTotal = cands.reduce(function (sum, r) { return sum + r.votes; }, 0);
+    const top = cands.length && cands[0].votes > 0 ? cands[0].votes : 0;
+    if (!cands.length) {
+      return '<div class="empty">No candidates in this position yet.</div>';
+    }
+    return cands.map(function (r) {
+      const pct = posTotal ? Math.round((r.votes / posTotal) * 100) : 0;
+      const photo = r.cand.photo
+        ? '<img class="avatar" src="' + esc(r.cand.photo) + '" alt="" style="object-fit:cover;">'
+        : '<span class="avatar">' + esc(initials(r.cand.name)) + '</span>';
+      const lead = top && r.votes === top ? ' <span class="badge active">Leading</span>' : '';
+      return (
+        '<div class="graph-row">' +
+        '<div class="graph-meta">' +
+        '<span class="graph-cand">' + photo + '<span><strong>' + esc(r.cand.name) + '</strong>' + lead + '</span></span>' +
+        '<span><span class="graph-count">' + fmtNum(r.votes) + '</span> <span class="graph-pct">' + pct + '%</span></span>' +
+        '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function renderLive() {
     $status.textContent = election.name + ' · ' + fmtNum(totalVotes) + ' vote' + (totalVotes === 1 ? '' : 's') + ' cast so far.';
     $badge.innerHTML = '<span class="badge active-running">Live</span>';
@@ -159,12 +190,13 @@
       const votes = posVotes(pos.id);
       const leader = leaderOf(pos.id);
       return (
-        '<div class="stat pos-card" data-pos="' + esc(pos.id) + '" role="button" tabindex="0">' +
+        '<div class="stat pos-card" data-pos="' + esc(pos.id) + '">' +
         '<div class="num">' + fmtNum(votes) + '</div>' +
         '<div class="label"><strong>' + esc(pos.name) + '</strong></div>' +
         '<div class="label">' + cands.length + ' candidate' + (cands.length === 1 ? '' : 's') +
         (leader ? ' · Leading: <strong>' + esc(leader.name) + '</strong>' : ' · No votes yet') + '</div>' +
-        '<div class="label" style="margin-top:8px;"><span class="btn btn-outline btn-sm">View live graph</span></div>' +
+        '<div class="live-bars" style="margin-top:12px;text-align:left;">' + barRows(pos.id) + '</div>' +
+        '<div class="label" style="margin-top:8px;"><button type="button" class="btn btn-outline btn-sm" data-graph="' + esc(pos.id) + '">View full graph</button></div>' +
         '</div>'
       );
     }).join('') + '</div>';
@@ -205,19 +237,13 @@
     }).join('');
   }
 
+  // Only the "View full graph" button opens the modal now — the live
+  // bars are already visible inline on every card, and native buttons
+  // handle keyboard activation on their own.
   $grid.addEventListener('click', function (ev) {
-    const card = ev.target.closest('.pos-card');
-    if (!card) return;
-    openPosId = card.dataset.pos;
-    renderGraph();
-    openModal('graphModal');
-  });
-  $grid.addEventListener('keydown', function (ev) {
-    if (ev.key !== 'Enter' && ev.key !== ' ') return;
-    const card = ev.target.closest('.pos-card');
-    if (!card) return;
-    ev.preventDefault();
-    openPosId = card.dataset.pos;
+    const btn = ev.target.closest('[data-graph]');
+    if (!btn) return;
+    openPosId = btn.dataset.graph;
     renderGraph();
     openModal('graphModal');
   });

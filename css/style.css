@@ -365,7 +365,7 @@ table.data tbody tr:hover { background: #f5f8fd; }
 .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
 
 /* position cards (live page) */
-.pos-card { cursor: pointer; transition: border-color .15s, background .15s; }
+.pos-card { transition: border-color .15s, background .15s; }
 .pos-card:hover { border-color: var(--primary); background: #f7faff; }
 .pos-card .label strong { color: var(--text); }
 

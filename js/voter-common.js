@@ -48,7 +48,7 @@
       logoutBtn.addEventListener('click', async function () {
         const ok = await confirmDialog({ title: 'Log out', message: 'Log out of the CUSCO Voting System?', confirmText: 'Log Out' });
         if (ok) {
-          AUTH.signOut().then(function () { location.href = '/login.html'; });
+          AUTH.signOut().then(function () { location.href = '/'; });
         }
       });
     }
