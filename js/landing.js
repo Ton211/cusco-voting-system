@@ -20,9 +20,18 @@
     const v = String(raw || '').trim();
     if (!v) return '';
     if (v.indexOf('@') !== -1) return v.toLowerCase();
-    const norm = v.toUpperCase().replace(/\s+/g, '');
+    const norm = normalizeAdmInput(v);
     const local = norm.toLowerCase().replace(/[^a-z0-9._-]/g, '-');
     return local + '@cusco.student';
+  }
+
+  // Adm numbers are case-insensitive: ADM001 == adm001 == Adm 001.
+  // Normalizing upfront (and showing it in the field) means the very
+  // first sign-in attempt uses the right email AND the right first-login
+  // password (stored upper-cased server-side), instead of paying for
+  // 2-3 sequential network round-trips through the case-retry fallback.
+  function normalizeAdmInput(raw) {
+    return String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
   }
 
   // Already signed in? Send to the right portal.
@@ -47,13 +56,34 @@
   }
   function clearError() { errorBox.style.display = 'none'; }
 
+  // Show the adm upper-cased as they type so students see that
+  // ADM001 and adm001 are the same account.
+  if (admInput) {
+    admInput.addEventListener('input', function () {
+      const pos = admInput.selectionStart;
+      const norm = normalizeAdmInput(admInput.value);
+      if (admInput.value !== norm && norm.indexOf('@') === -1) {
+        admInput.value = norm;
+        try { admInput.setSelectionRange(pos, pos); } catch (e) {}
+      }
+    });
+  }
+
   if (loginForm) {
     loginForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       clearError();
-      const username = String(admInput.value || '').trim();
-      const password = String(pwInput.value || '');
-      if (!username || !password) { showError('Enter your adm number and password.'); return; }
+      const rawUsername = String(admInput.value || '').trim();
+      let password = String(pwInput.value || '');
+      if (!rawUsername || !password) { showError('Enter your adm number and password.'); return; }
+      // Normalize the adm upfront. If the password is just the adm number
+      // typed in another case (first login), use the normalized form on
+      // the FIRST attempt so login takes 1 request instead of up to 3.
+      const username = rawUsername.indexOf('@') !== -1 ? rawUsername : normalizeAdmInput(rawUsername);
+      if (username.indexOf('@') === -1 && normalizeAdmInput(password) === username) {
+        password = username;
+      }
+      admInput.value = username;
       loginBtn.disabled = true;
       loginBtn.textContent = 'Logging in…';
       const email = loginEmailForInput(username);

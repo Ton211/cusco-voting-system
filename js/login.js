@@ -22,12 +22,33 @@
     const v = String(raw || '').trim();
     if (!v) return '';
     if (v.indexOf('@') !== -1) return v.toLowerCase();
-    const norm = v.toUpperCase().replace(/\s+/g, '');
+    const norm = normalizeAdmInput(v);
     const local = norm.toLowerCase().replace(/[^a-z0-9._-]/g, '-');
     return local + '@cusco.student';
   }
 
+  // Adm numbers are case-insensitive: ADM001 == adm001 == Adm 001.
+  // Matches functions/index.js normalizeAdm so the client and server
+  // always agree, and the first sign-in attempt uses the normalized
+  // form instead of paying for case-retry round-trips.
+  function normalizeAdmInput(raw) {
+    return String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
+  }
+
   const isStaffPage = document.body && document.body.dataset && document.body.dataset.page === 'admin-login';
+
+  // Show the adm upper-cased as they type (student pages only; staff
+  // usernames keep their own casing rules server-side).
+  if (!isStaffPage && emailInput) {
+    emailInput.addEventListener('input', function () {
+      const pos = emailInput.selectionStart;
+      const norm = normalizeAdmInput(emailInput.value);
+      if (emailInput.value !== norm && norm.indexOf('@') === -1) {
+        emailInput.value = norm;
+        try { emailInput.setSelectionRange(pos, pos); } catch (e) {}
+      }
+    });
+  }
   const defaultBtnText = submitBtn ? submitBtn.textContent : 'Log In';
 
   function resetBtn() {
@@ -39,12 +60,22 @@
     e.preventDefault();
     clearError();
 
-    const username = emailInput.value.trim();
-    const password = passwordInput.value;
+    const rawUsername = emailInput.value.trim();
+    let password = passwordInput.value;
 
-    if (!username || !password) {
+    if (!rawUsername || !password) {
       showError(isStaffPage ? 'Enter your staff username and password.' : 'Enter your adm number and password.');
       return;
+    }
+
+    // Normalize adm upfront (student logins only). If the password is
+    // just the adm typed in another case (first login), use the
+    // normalized form on the FIRST attempt: 1 request instead of up to 3.
+    let username = rawUsername;
+    if (!isStaffPage && rawUsername.indexOf('@') === -1) {
+      username = normalizeAdmInput(rawUsername);
+      if (normalizeAdmInput(password) === username) password = username;
+      emailInput.value = username;
     }
 
     submitBtn.disabled = true;
