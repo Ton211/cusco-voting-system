@@ -106,10 +106,92 @@ function callFriendly(err) {
 }
 
 // ---------------------------------------------------------------
+//  Real-time sync: Firestore snapshot listeners instead of polling.
+//
+//  Attaches onSnapshot to every ref (collection / query / document).
+//  Any change schedules reload() at once (debounced ~400ms so a burst
+//  of related writes still causes a single refresh), so the screen
+//  updates the moment data changes — no manual refresh, no waiting
+//  for the next poll tick.
+//
+//  Same safety guards as autoLive: while the tab is hidden, a dialog
+//  is open, or the user is typing, updates wait and are applied by
+//  the 2s safety-net tick instead — forms are never clobbered
+//  mid-edit. opts.allowModal skips the modal guard for pages whose
+//  open dialog IS the live view (admin Live graphs).
+//
+//  Returns stop(); also stops automatically on page unload.
+// ---------------------------------------------------------------
+function liveCollections(refs, reload, opts) {
+  const o = opts || {};
+  let busy = false;
+  let pending = false;
+  let stopped = false;
+  let debounce = null;
+  const unsubs = [];
+
+  function guardsBusy() {
+    if (document.hidden) return true;
+    if (!o.allowModal && document.querySelector('.modal.modal-open')) return true;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT')) return true;
+    return false;
+  }
+
+  async function run() {
+    if (busy || stopped) return;
+    busy = true;
+    try { await reload(); } catch (e) {}
+    busy = false;
+    if (pending && !guardsBusy()) { pending = false; run(); }
+  }
+
+  function schedule() {
+    if (stopped) return;
+    if (busy || guardsBusy()) { pending = true; return; }
+    if (debounce) return; // coalesce rapid bursts into one refresh
+    debounce = setTimeout(function () {
+      debounce = null;
+      if (stopped) return;
+      if (busy || guardsBusy()) { pending = true; return; }
+      run();
+    }, 400);
+  }
+
+  (refs || []).forEach(function (ref) {
+    try {
+      unsubs.push(ref.onSnapshot(function () { schedule(); }, function (err) {
+        try { console.error('Live sync listener error:', err); } catch (e) {}
+      }));
+    } catch (err) {
+      try { console.error('Live sync subscribe failed:', err); } catch (e) {}
+    }
+  });
+
+  // Safety net every 2s: apply anything deferred while a dialog was
+  // open or the user was typing, and catch any missed event.
+  const timer = setInterval(function () {
+    if (stopped || document.hidden) return;
+    if (pending && !guardsBusy()) { pending = false; run(); }
+  }, 2000);
+
+  function stop() {
+    stopped = true;
+    if (debounce) clearTimeout(debounce);
+    if (timer) clearInterval(timer);
+    unsubs.forEach(function (u) { try { u(); } catch (e) {} });
+  }
+  window.addEventListener('beforeunload', stop);
+  return stop;
+}
+
+// ---------------------------------------------------------------
 //  Live auto refresh (2s polling with safety guards).
-//  Re-runs reload() every 2 seconds so data stays accurate without
-//  manual refresh. Skips ticks while the tab is hidden, a dialog is
-//  open, the user is typing, or a previous tick is still running.
+//  Kept as the fallback driver; most pages now use liveCollections
+//  (real-time snapshots) above. Re-runs reload() every 2 seconds so
+//  data stays accurate without manual refresh. Skips ticks while the
+//  tab is hidden, a dialog is open, the user is typing, or a previous
+//  tick is still running.
 // ---------------------------------------------------------------
 function autoLive(reload, ms) {
   const every = ms || 2000;

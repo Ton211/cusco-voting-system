@@ -208,7 +208,7 @@
   });
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () { liveCollections([DB.collection('studentList')], load); });
   }).catch(function (err) {
     toast('Could not load students: ' + friendlyError(err), 'error');
   });

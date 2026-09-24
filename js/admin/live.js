@@ -2,8 +2,7 @@
 //  Admin: live voting graphs
 //  Position cards for the open election, each with its live bar graph
 //  embedded inline so results are visible immediately — no clicking.
-//  Graphs refresh every few seconds while voting is in progress.
-//  The "Full graph" button still opens a focused modal per position.
+//  Graphs refresh in real time while voting is in progress.
 //  Blank when no election is open.
 // =====================================================================
 (function () {
@@ -11,20 +10,12 @@
   const $badge = document.getElementById('liveBadge');
   const $grid = document.getElementById('positionGrid');
   const $blank = document.getElementById('blankCard');
-  const $graphTitle = document.getElementById('graphTitle');
-  const $graphMeta = document.getElementById('graphMeta');
-  const $graphBody = document.getElementById('graphBody');
-  const $graphModal = document.getElementById('graphModal');
-
-  const POLL_MS = 2000;
 
   let election = null;
   let positions = [];
   let candidatesByPos = {};
   let results = {};
   let totalVotes = 0;
-  let openPosId = null;
-  let timer = null;
   let countdownTarget = 0;
   let countdownTimer = null;
 
@@ -93,7 +84,6 @@
     totalVotes = vData.totalVotes || 0;
 
     renderLive();
-    if (openPosId) renderGraph();
   }
 
   function renderBlank() {
@@ -102,7 +92,6 @@
     $badge.innerHTML = '<span class="badge draft">Offline</span>';
     $grid.innerHTML = '';
     $blank.classList.remove('hidden');
-    if (openPosId) { openPosId = null; closeModal('graphModal'); }
   }
 
   function fmtCountdown(ms) {
@@ -124,7 +113,6 @@
   }
 
   function renderUpcoming(up) {
-    if (openPosId) { openPosId = null; closeModal('graphModal'); }
     const startMs = tsToDate(up.startTime).getTime() || 0;
     const endMs = tsToDate(up.endTime).getTime() || 0;
     const nowMs = Date.now();
@@ -196,77 +184,25 @@
         '<div class="label">' + cands.length + ' candidate' + (cands.length === 1 ? '' : 's') +
         (leader ? ' · Leading: <strong>' + esc(leader.name) + '</strong>' : ' · No votes yet') + '</div>' +
         '<div class="live-bars" style="margin-top:12px;text-align:left;">' + barRows(pos.id) + '</div>' +
-        '<div class="label" style="margin-top:8px;"><button type="button" class="btn btn-outline btn-sm" data-graph="' + esc(pos.id) + '">View full graph</button></div>' +
         '</div>'
       );
     }).join('') + '</div>';
   }
 
-  function renderGraph() {
-    const pos = positions.find(function (p) { return p.id === openPosId; });
-    if (!pos) return;
-    const cands = (candidatesByPos[pos.id] || []).map(function (c) {
-      return { cand: c, votes: ((results[pos.id] || {})[c.id]) || 0 };
-    }).sort(function (a, b) { return b.votes - a.votes; });
-    const posTotal = cands.reduce(function (sum, r) { return sum + r.votes; }, 0);
-    const top = cands.length && cands[0].votes > 0 ? cands[0].votes : 0;
-
-    $graphTitle.textContent = pos.name + ' · Live';
-    $graphMeta.textContent = fmtNum(posTotal) + ' vote' + (posTotal === 1 ? '' : 's') + ' in this position · ' + esc(election.name);
-
-    if (!cands.length) {
-      $graphBody.innerHTML = '<div class="empty">No candidates in this position yet.</div>';
-      return;
-    }
-
-    $graphBody.innerHTML = cands.map(function (r) {
-      const pct = posTotal ? Math.round((r.votes / posTotal) * 100) : 0;
-      const photo = r.cand.photo
-        ? '<img class="avatar" src="' + esc(r.cand.photo) + '" alt="" style="object-fit:cover;">'
-        : '<span class="avatar">' + esc(initials(r.cand.name)) + '</span>';
-      const lead = top && r.votes === top ? ' <span class="badge active">Leading</span>' : '';
-      return (
-        '<div class="graph-row">' +
-        '<div class="graph-meta">' +
-        '<span class="graph-cand">' + photo + '<span><strong>' + esc(r.cand.name) + '</strong>' + lead + '</span></span>' +
-        '<span><span class="graph-count">' + fmtNum(r.votes) + '</span> <span class="graph-pct">' + pct + '%</span></span>' +
-        '</div>' +
-        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>' +
-        '</div>'
-      );
-    }).join('');
-  }
-
-  // Only the "View full graph" button opens the modal now — the live
-  // bars are already visible inline on every card, and native buttons
-  // handle keyboard activation on their own.
-  $grid.addEventListener('click', function (ev) {
-    const btn = ev.target.closest('[data-graph]');
-    if (!btn) return;
-    openPosId = btn.dataset.graph;
-    renderGraph();
-    openModal('graphModal');
-  });
-
-  qsa('[data-close]').forEach(function (b) {
-    b.addEventListener('click', function () { closeModal(b.dataset.close); });
-  });
-  $graphModal.addEventListener('click', function (e) {
-    if (e.target === $graphModal) { openPosId = null; closeModal('graphModal'); }
-  });
-
-  // Own poller (not autoLive): the graph must keep refreshing while
-  // its modal is open, which autoLive deliberately skips.
+  // Real-time sync: snapshots refresh the inline graphs the moment
+  // votes change. The 1s countdown clock stays on its own timer.
   window.authPromise.then(function () {
     return refresh().catch(function (err) {
       $status.textContent = 'Could not load live data.';
       toast('Could not load live data: ' + friendlyError(err), 'error');
     });
   }).then(function () {
-    timer = setInterval(function () { refresh().catch(function () {}); }, POLL_MS);
+    liveCollections(
+      [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes')],
+      function () { return refresh().catch(function () {}); }
+    );
     countdownTimer = setInterval(tickCountdown, 1000);
     window.addEventListener('beforeunload', function () {
-      if (timer) clearInterval(timer);
       if (countdownTimer) clearInterval(countdownTimer);
     });
   });

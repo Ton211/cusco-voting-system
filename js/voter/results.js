@@ -66,7 +66,13 @@
   }
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () {
+      // Real-time: released votes or visibility changes appear at once.
+      liveCollections(
+        [DB.collection('settings').doc('resultsVisibility'), DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes')],
+        load
+      );
+    });
   }).catch(function (err) {
     $body.innerHTML = '<p class="muted center">Could not load results: ' + esc(friendlyError(err)) + '</p>';
   });

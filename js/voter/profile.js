@@ -51,7 +51,12 @@
   });
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () {
+      // Real-time: profile changes (e.g. by an admin) appear at once.
+      // Updates still pause while typing the new password.
+      const uid = window.__auth && window.__auth.user ? window.__auth.user.uid : null;
+      liveCollections(uid ? [DB.collection('users').doc(uid)] : [], load);
+    });
   }).catch(function (err) {
     $body.innerHTML = '<p class="muted center">Could not load profile: ' + esc(friendlyError(err)) + '</p>';
   });

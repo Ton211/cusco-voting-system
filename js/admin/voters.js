@@ -438,7 +438,7 @@
         '<option value="superadmin">Super Admin</option>';
     }
     plusActivateButtonsCss();
-    return load().then(function () { autoLive(load); });
+    return load().then(function () { liveCollections([DB.collection('users'), DB.collection('studentList')], load); });
   }).catch(function (err) {
     toast('Could not load voters: ' + friendlyError(err), 'error');
   });

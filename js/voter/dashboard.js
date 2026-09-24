@@ -86,7 +86,16 @@
   // Clean any in-progress ballot when returning to the dashboard.
   window.authPromise.then(function () {
     try { sessionStorage.removeItem('cusco_ballot'); } catch (e) {}
-    return load().then(function () { autoLive(load); });
+    return load().then(function () {
+      // Real-time: profile, receipts, or election changes update at once.
+      const uid = window.__auth && window.__auth.user ? window.__auth.user.uid : null;
+      const refs = [DB.collection('elections')];
+      if (uid) {
+        refs.push(DB.collection('users').doc(uid));
+        refs.push(DB.collection('users').doc(uid).collection('receipts'));
+      }
+      liveCollections(refs, load);
+    });
   }).catch(function (err) {
     $body.innerHTML = '<p class="muted center">Could not load your portal: ' + esc(friendlyError(err)) + '</p>';
   });

@@ -145,7 +145,7 @@
   $modal.addEventListener('click', function (e) { if (e.target === $modal) closeModal('positionModal'); });
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () { liveCollections([DB.collection('elections'), DB.collection('positions')], load); });
   }).catch(function (err) {
     toast('Could not load positions: ' + friendlyError(err), 'error');
   });

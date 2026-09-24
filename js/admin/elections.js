@@ -207,7 +207,7 @@
   eleModal.addEventListener('click', function (e) { if (e.target === eleModal) closeModal('electionModal'); });
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () { liveCollections([DB.collection('elections')], load); });
   }).catch(function (err) {
     $list.innerHTML = '<div class="empty">Could not load elections: ' + esc(friendlyError(err)) + '</div>';
   });

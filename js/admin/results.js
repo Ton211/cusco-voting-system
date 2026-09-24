@@ -210,9 +210,13 @@
 
   window.authPromise.then(async function () {
     await loadSelect();
-    autoLive(function () {
-      if (selectedElection) return loadElection(selectedElection.id, true);
-    });
+    // Real-time: votes, candidates, or settings changes re-render at once.
+    liveCollections(
+      [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes'), DB.collection('users').where('role', '==', 'voter'), DB.collection('settings').doc('resultsVisibility')],
+      function () {
+        if (selectedElection) return loadElection(selectedElection.id, true);
+      }
+    );
   }).catch(function (err) {
     toast('Could not load elections: ' + friendlyError(err), 'error');
   });

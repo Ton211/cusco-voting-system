@@ -192,7 +192,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { autoLive(load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });

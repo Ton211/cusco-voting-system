@@ -305,7 +305,8 @@
     return loadMeta();
   }).then(function () {
     render('');
-    autoLive(refresh);
+    // Real-time: any candidate/election/position change re-renders at once.
+    liveCollections([DB.collection('elections'), DB.collection('positions'), DB.collection('candidates')], refresh);
   }).catch(function (err) {
     toast('Could not load candidates: ' + friendlyError(err), 'error');
   });

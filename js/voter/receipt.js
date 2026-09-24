@@ -30,7 +30,13 @@
   }
 
   window.authPromise.then(function () {
-    return load().then(function () { autoLive(load); });
+    return load().then(function () {
+      // Real-time: a new receipt or election change appears at once.
+      const uid = window.__auth && window.__auth.user ? window.__auth.user.uid : null;
+      const refs = [DB.collection('elections')];
+      if (uid) refs.push(DB.collection('users').doc(uid).collection('receipts'));
+      liveCollections(refs, load);
+    });
   }).catch(function (err) {
     $body.innerHTML = '<p class="muted center">Could not load receipts: ' + esc(friendlyError(err)) + '</p>';
   });
