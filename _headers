@@ -7,6 +7,9 @@
 #   module loading. 'unsafe-inline' stays in style-src because the admin
 #   pages inject <style> nodes at runtime; no inline <script> remains in
 #   the app, so script-src has no 'unsafe-inline'/'unsafe-eval'.
+#   NOTE: Firebase Storage uploads go to firebasestorage.googleapis.com
+#   (NOT storage.googleapis.com) — both must stay in connect-src or
+#   candidate photo uploads are blocked and hang on "Saving…".
 
 /*
   X-Frame-Options: DENY
@@ -15,5 +18,5 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), fullscreen=(self)
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' blob: https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://storage.googleapis.com https://www.gstatic.com https://www.google.com https://us-central1-cusco-voting-2026.cloudfunctions.net blob:; frame-src https://www.google.com https://recaptcha.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob: https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://storage.googleapis.com https://firebasestorage.googleapis.com https://www.gstatic.com https://www.google.com https://us-central1-cusco-voting-2026.cloudfunctions.net blob:; frame-src https://www.google.com https://recaptcha.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 */

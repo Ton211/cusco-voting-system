@@ -45,8 +45,15 @@ function withSecurityHeaders(response) {
   if (!headers.has('Permissions-Policy'))
     headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), fullscreen=(self)');
   if (!headers.has('Cross-Origin-Opener-Policy')) headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-  // HSTS is added by Cloudflare automatically on HTTPS custom domains;
-  // setting it here too is harmless.
+  // CSP mirrors the `_headers` file (Pages does not apply `_headers`
+  // to responses served through this fetch handler, so we set it here).
+  // Must include https://firebasestorage.googleapis.com or candidate
+  // photo uploads are blocked by the browser and hang on "Saving…".
+  if (!headers.has('Content-Security-Policy'))
+    headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' blob: https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://storage.googleapis.com https://firebasestorage.googleapis.com https://www.gstatic.com https://www.google.com https://us-central1-cusco-voting-2026.cloudfunctions.net blob:; frame-src https://www.google.com https://recaptcha.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+    );
   if (!headers.has('Strict-Transport-Security'))
     headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   return new Response(response.body, {
