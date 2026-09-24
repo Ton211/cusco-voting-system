@@ -116,30 +116,63 @@
     }
 
     let html = summary;
+    const isClosed = election.status === 'closed';
     positions.forEach(function (pos) {
-      const list = (candidatesByPosition[pos.id] || []).filter(function (c) { return c.status === 'active'; });
+      // Candidates ranked by votes (most first) so opponents always
+      // appear in leading order, whether the election is live or closed.
+      const list = (candidatesByPosition[pos.id] || [])
+        .filter(function (c) { return c.status === 'active'; })
+        .map(function (c) {
+          return {
+            id: c.id, name: c.name, photo: c.photo, status: c.status,
+            count: ((results[pos.id] || {})[c.id]) || 0
+          };
+        })
+        .sort(function (a, b) { return b.count - a.count; });
 
-      let max = 1;
-      list.forEach(function (c) {
-        const n = (results[pos.id] && results[pos.id][c.id]) || 0;
-        if (n > max) max = n;
-      });
+      const posTotal = list.reduce(function (sum, c) { return sum + c.count; }, 0);
+      const top = list.length && list[0].count > 0 ? list[0].count : 0;
+      const leaders = top ? list.filter(function (c) { return c.count === top; }) : [];
+      const tied = leaders.length > 1;
+      const leaderNames = leaders.map(function (c) { return c.name; }).join(', ');
 
-      const posTotal = list.reduce(function (sum, c) { return sum + (((results[pos.id] || {})[c.id]) || 0); }, 0);
+      // Headline banner: who is leading right now, or who won.
+      let banner;
+      if (!list.length) {
+        banner = '<p class="muted">No active candidates for this position.</p>';
+      } else if (!top) {
+        banner = '<p class="muted">No votes cast for this position yet.</p>';
+      } else if (isClosed) {
+        banner = tied
+          ? '<p style="margin:0 0 12px;"><span class="badge scheduled">Tied winners</span> <strong>' + esc(leaderNames) + '</strong> — ' + fmtNum(top) + ' votes each</p>'
+          : '<p style="margin:0 0 12px;"><span class="badge active">Winner</span> <strong>' + esc(leaderNames) + '</strong> — ' + fmtNum(top) + ' votes</p>';
+      } else {
+        banner = tied
+          ? '<p style="margin:0 0 12px;"><span class="badge scheduled">Tied for lead</span> <strong>' + esc(leaderNames) + '</strong> — ' + fmtNum(top) + ' votes each</p>'
+          : '<p style="margin:0 0 12px;"><span class="badge active">Leading</span> <strong>' + esc(leaderNames) + '</strong> — ' + fmtNum(top) + ' votes</p>';
+      }
+
+      const posBadge = isClosed
+        ? '<span class="badge admin">Final</span>'
+        : (election.status === 'active' ? '<span class="badge active-running">Live</span>' : '<span class="badge scheduled">' + esc(election.status || 'Not open') + '</span>');
+
       const rows = list.map(function (c) {
-        const count = (results[pos.id] && results[pos.id][c.id]) || 0;
-        const green = max ? Math.round((count / max) * 100) : 0;
+        const green = top ? Math.round((c.count / top) * 100) : 0;
         const red = posTotal ? Math.max(0, 100 - green) : 0;
+        const pct = posTotal ? Math.round((c.count / posTotal) * 100) : 0;
         const photo = c.photo
           ? '<img class="avatar sm" src="' + esc(c.photo) + '" alt="" style="object-fit:cover; width:30px;height:30px;">'
           : '<span class="avatar sm">' + esc(initials(c.name)) + '</span>';
-        let leadBadge = '';
-        if (max > 1 && count === max) leadBadge = '<span class="badge active">Leading</span>';
+        let badge = '';
+        if (top && c.count === top) {
+          if (isClosed) badge = tied ? '<span class="badge scheduled">Tied winner</span>' : '<span class="badge active">Winner</span>';
+          else badge = tied ? '<span class="badge scheduled">Tied lead</span>' : '<span class="badge active">Leading</span>';
+        }
         return (
           '<div class="result-row">' +
           '<div class="row-meta">' +
-          '<span style="display:flex;gap:8px;align-items:center;">' + photo + ' <span><strong>' + esc(c.name) + '</strong> ' + leadBadge + '</span></span>' +
-          '<span class="count">' + fmtNum(count) + '</span>' +
+          '<span style="display:flex;gap:8px;align-items:center;">' + photo + ' <span><strong>' + esc(c.name) + '</strong> ' + badge + '</span></span>' +
+          '<span class="count">' + fmtNum(c.count) + ' <span class="muted" style="font-weight:400;">(' + pct + '%)</span></span>' +
           '</div>' +
           '<div class="bar-track" style="display:flex;"><div style="height:100%; width:' + green + '%; background:#16a34a;"></div><div style="height:100%; width:' + red + '%; background:#dc2626;"></div></div>' +
           '</div>'
@@ -148,8 +181,9 @@
 
       html +=
         '<div class="card result-card">' +
-        '<div class="card-title"><span>' + esc(pos.name) + '</span><span class="muted">' + fmtNum(list.length) + ' candidate(s)</span></div>' +
-        (rows || '<p class="muted">No active candidates for this position.</p>') +
+        '<div class="card-title"><span>' + esc(pos.name) + ' ' + posBadge + '</span><span class="muted">' + fmtNum(list.length) + ' candidate(s) · ' + fmtNum(posTotal) + ' votes</span></div>' +
+        banner +
+        (rows || '') +
         '</div>';
     });
 
