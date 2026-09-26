@@ -5,9 +5,8 @@
 //    1. Election identity  (name, status, voting window)
 //    2. Electorate        (registered / active / inactive voters)
 //    3. Turnout           (votes cast, turnout %, abstention)
-//    4. Per-position outcome (candidates ranked, votes, %, winner/tie)
-//    5. Participation list  (who voted / who did not — NEVER who they
-//       voted for; ballots stay anonymised aggregates)
+//    4. Winners by position (each position and its winner)
+//    5. Per-position outcome (candidates ranked, votes, %, winner/tie)
 //    6. Audit footer      (generated at + by, data source note)
 //
 //  Counting rule (same as dashboard): one voter == one vote. A voter
@@ -18,10 +17,8 @@
   const $select = document.getElementById('reportElection');
   const $body = document.getElementById('reportBody');
   const $meta = document.getElementById('reportMeta');
-  const $filter = document.getElementById('filterVoted');
-  const $search = document.getElementById('reportSearch');
 
-  let cache = null; // last built report, reused by filters + CSV export
+  let cache = null; // last built report, reused by CSV export
   let selectedId = null;
 
   function statusBadge(status) {
@@ -156,7 +153,7 @@
   }
 
   // ---------------------------------------------------------------
-  // Render (applies participation filter + search without refetch)
+  // Render
   // ---------------------------------------------------------------
   function render() {
     if (!cache) return;
@@ -245,39 +242,6 @@
         '</tbody></table></div></div>';
     }
 
-    // Participation table with filter + search
-    const mode = $filter ? $filter.value : 'all';
-    const q = ($search ? $search.value : '').toLowerCase().trim();
-    const rows = c.voters.filter(function (v) {
-      if (mode === 'voted' && !v.voted) return false;
-      if (mode === 'not' && v.voted) return false;
-      if (!q) return true;
-      return [v.admNumber, v.fullName, v.gender, v.status].some(function (x) {
-        return String(x || '').toLowerCase().includes(q);
-      });
-    });
-
-    const partHtml =
-      '<div class="card"><div class="card-title"><span>Voter participation</span>' +
-      '<span class="muted text-sm">Showing ' + rows.length + ' of ' + c.voters.length +
-      ' · secrecy preserved: choices are never shown</span></div>' +
-      '<div class="table-wrap"><table class="data"><thead><tr>' +
-      '<th>Adm Number</th><th>Name</th><th>Gender</th><th>Account</th><th>Voted</th>' +
-      '</tr></thead><tbody>' +
-      (rows.map(function (v) {
-        const votedBadge = v.voted
-          ? '<span class="badge active">Voted</span>'
-          : '<span class="badge pending">Not voted</span>';
-        const acct = v.status === 'inactive'
-          ? '<span class="badge inactive">Inactive</span>'
-          : '<span class="badge voter">Active</span>';
-        return '<tr><td><strong>' + esc(v.admNumber) + '</strong></td><td>' + esc(v.fullName) +
-          '</td><td>' + esc(v.gender) + '</td><td>' + acct + '</td><td>' + votedBadge + '</td></tr>';
-      }).join('') || '<tr><td colspan="5"><div class="empty">No voters match this filter.</div></td></tr>') +
-      '</tbody></table></div>' +
-      '<p class="muted mt-16" style="font-size:13px;">Ballots are stored as anonymised aggregates ' +
-      '(votes/{electionId}). This report links users to <strong>participation only</strong>, never to choices.</p></div>';
-
     const me = (window.AUTH && AUTH.currentUser && (AUTH.currentUser.displayName || AUTH.currentUser.email)) || 'admin';
     const footer =
       '<div class="card"><div class="card-title"><span>Audit</span></div>' +
@@ -287,7 +251,7 @@
       '<dt>Sources</dt><dd>users (role=voter, votedIn map) + votes/' + esc(e.id || selectedId || '') + ' + positions + candidates + elections</dd>' +
       '</dl></div>';
 
-    $body.innerHTML = summary + header + outcomeHtml + partHtml + footer;
+    $body.innerHTML = summary + header + outcomeHtml + footer;
   }
 
   // ---------------------------------------------------------------
@@ -367,18 +331,6 @@
     toast('Summary CSV downloaded.', 'success');
   }
 
-  function exportVoters() {
-    if (!cache) { toast('Build a report first — select an election.', 'error'); return; }
-    const c = cache;
-    const rows = [['Adm Number', 'Full Name', 'Gender', 'Account Status', 'Voted in ' + (c.election.name || 'election')]];
-    c.voters.forEach(function (v) {
-      rows.push([v.admNumber, v.fullName, v.gender, v.status, v.voted ? 'Yes' : 'No']);
-    });
-    const slug = String(c.election.name || 'election').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) || 'election';
-    downloadCsv('report-voters-' + slug + '.csv', rows);
-    toast('Voters CSV downloaded (' + c.voters.length + ' rows).', 'success');
-  }
-
   // ---------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------
@@ -395,11 +347,8 @@
       $body.innerHTML = '<div class="empty">Could not build report: ' + esc(friendlyError(err)) + '</div>';
     }
   });
-  if ($filter) $filter.addEventListener('change', render);
-  if ($search) $search.addEventListener('input', render);
   document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
   document.getElementById('csvSummaryBtn').addEventListener('click', exportSummary);
-  document.getElementById('csvVotersBtn').addEventListener('click', exportVoters);
 
   window.authPromise.then(function () {
     return loadSelect().then(function () {

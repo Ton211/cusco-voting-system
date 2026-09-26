@@ -33,34 +33,21 @@
       <div class="page-head">
         <div>
           <h1>Election Report</h1>
-          <p>Users &#8596; Results — turnout, winners and participation for one election.</p>
+          <p>Users &#8596; Results — turnout, winners and results for one election.</p>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;" class="no-print">
           <button class="btn btn-outline" id="printBtn" type="button">Print</button>
-          <button class="btn btn-outline" id="csvSummaryBtn" type="button">Export summary CSV</button>
-          <button class="btn btn-primary" id="csvVotersBtn" type="button">Export voters CSV</button>
+          <button class="btn btn-primary" id="csvSummaryBtn" type="button">Export summary CSV</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr; align-items:end;">
+        <div class="form-grid" style="grid-template-columns:1fr; align-items:end;">
           <div class="form-group">
             <label for="reportElection">Election</label>
             <select class="input" id="reportElection">
               <option value="">Select an election…</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label for="filterVoted">Participation</label>
-            <select class="input" id="filterVoted">
-              <option value="all">All voters</option>
-              <option value="voted">Voted only</option>
-              <option value="not">Not voted only</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="reportSearch">Search voters</label>
-            <input class="input" type="search" id="reportSearch" placeholder="Adm, name…">
           </div>
         </div>
         <p class="muted text-sm" id="reportMeta">Select an election above to build the report.</p>
