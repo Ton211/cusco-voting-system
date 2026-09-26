@@ -225,11 +225,11 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
     }
     // First-time login uses the adm number as both username and password.
     // Stored upper-cased so first login works regardless of typed case.
+    // The password set here is final: the user is NOT forced to change it.
     if (!password) password = normalizeAdm(data.voterId || data.admNumber || '');
     if (password.length < 6) {
-      throw HttpsError('invalid-argument', 'Adm number must be at least 6 characters to serve as the first password, or supply a longer temporary password.');
+      throw HttpsError('invalid-argument', 'Adm number must be at least 6 characters to serve as the password, or supply a longer password.');
     }
-    mustChangePassword = true;
   } else {
     // Admin / superadmin accounts keep email login.
     if (!isValidEmail(email)) throw HttpsError('invalid-argument', 'A valid email is required.');
@@ -257,8 +257,8 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    // mustChangePassword rides in the token so login stays fast (no extra read).
-    await admin.auth().setCustomUserClaims(uid, role === 'voter' ? { role: role, mustChangePassword: true } : { role: role });
+    // Passwords set by the Super Admin are final, so no forced-change flag.
+    await admin.auth().setCustomUserClaims(uid, { role: role, mustChangePassword: false });
     await db.collection('users').doc(uid).set({
       fullName: fullName,
       voterId: voterId,
@@ -355,9 +355,9 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
   if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
   const target = userDoc.data();
 
-  // Blank password: restore the voter's adm number as a temporary
-  // password. The voter must set their own password at next sign in
-  // (mustChangePassword flag below + the set-password gate).
+  // Blank password: restore the voter's adm number as the password.
+  // A password set here is final: the user keeps it until the
+  // Super Admin resets it again.
   if (!password) {
     if (target.role !== 'voter') throw HttpsError('invalid-argument', 'Enter a new password of at least 6 characters.');
     const adm = String(target.admNumber || target.voterId || '').trim();
@@ -371,24 +371,22 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
   } catch (err) {
     throw HttpsError('not-found', 'User not found.');
   }
-  // A voter whose password was reset by an admin must pick their own
-  // password on next sign in. This keeps plaintext passwords out of the
-  // admin panel: admins see only the status flag, never the password.
-  if (target.role === 'voter') {
-    await admin.auth().setCustomUserClaims(uid, { role: 'voter', mustChangePassword: true });
-    await db.collection('users').doc(uid).update({
-      mustChangePassword: true,
-      passwordChangedAt: null,
-      updatedAt: serverNow()
-    });
-  }
+  // The reset password is final. Clear any stale forced-change flag so
+  // the user is not pushed to the set-password screen afterwards.
+  await admin.auth().setCustomUserClaims(uid, { role: target.role || 'voter', mustChangePassword: false });
+  await db.collection('users').doc(uid).update({
+    mustChangePassword: false,
+    passwordChangedAt: serverNow(),
+    updatedAt: serverNow()
+  });
   return { ok: true };
 });
 
 // ---------------------------------------------------------------------
 //  changeOwnPassword
-//  Signed-in user sets their own password. Used for the mandatory
-//  first-login password change (adm number -> own password).
+//  Signed-in user sets their own password. Used by the set-password
+//  screen (self-registered voters, legacy flagged accounts) and the
+//  voter profile page.
 // ---------------------------------------------------------------------
 exports.changeOwnPassword = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);

@@ -191,7 +191,7 @@
     let staffPw = '';
     if (role !== 'voter') {
       staffPw = document.getElementById('regPassword').value || '';
-      if (staffPw.length < 6) { toast('Staff temporary password must be at least 6 characters.', 'error'); return; }
+      if (staffPw.length < 6) { toast('Staff password must be at least 6 characters.', 'error'); return; }
     }
 
     const btn = $registerForm.querySelector('button[type=submit]');
