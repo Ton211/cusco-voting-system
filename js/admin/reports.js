@@ -188,7 +188,38 @@
     if (!c.positions.length) {
       outcomeHtml = '<div class="card"><div class="card-title"><span>Results by position</span></div><div class="empty">No positions defined for this election.</div></div>';
     } else {
-      outcomeHtml = '<div class="card"><div class="card-title"><span>Results by position</span><span class="muted text-sm">' +
+      // Dedicated winners summary: one row per position with its winner.
+      const winnersRows = c.outcomes.map(function (o) {
+        if (!o.list.length) {
+          return '<tr><td><strong>' + esc(o.position.name) + '</strong></td>' +
+            '<td class="muted">No candidates</td><td>—</td><td>—</td>' +
+            '<td><span class="badge draft">No contest</span></td></tr>';
+        }
+        if (!o.top) {
+          return '<tr><td><strong>' + esc(o.position.name) + '</strong></td>' +
+            '<td class="muted">No votes yet</td><td>0</td><td>0%</td>' +
+            '<td><span class="badge pending">Pending</span></td></tr>';
+        }
+        const tied = o.leaders.length > 1;
+        const names = o.leaders.map(function (l) { return esc(l.name); }).join(', ');
+        const pct = o.total ? Math.round((o.top / o.total) * 100) : 0;
+        const badge = tied
+          ? (isClosed ? '<span class="badge scheduled">Tie — joint winners</span>' : '<span class="badge scheduled">Tied lead</span>')
+          : (isClosed ? '<span class="badge active">Winner</span>' : '<span class="badge active">Leading</span>');
+        return '<tr><td><strong>' + esc(o.position.name) + '</strong></td>' +
+          '<td><strong>' + names + '</strong></td>' +
+          '<td>' + fmtNum(o.top) + '</td><td>' + pct + '%</td><td>' + badge + '</td></tr>';
+      }).join('');
+
+      const winnersHtml =
+        '<div class="card"><div class="card-title"><span>Winners by position</span>' +
+        '<span class="muted text-sm">Each position and its winner</span></div>' +
+        '<div class="table-wrap"><table class="data"><thead><tr>' +
+        '<th>Position</th><th>Winner</th><th>Votes</th><th>Share</th><th>Status</th>' +
+        '</tr></thead><tbody>' + winnersRows + '</tbody></table></div></div>';
+
+      outcomeHtml = winnersHtml +
+        '<div class="card"><div class="card-title"><span>Results by position</span><span class="muted text-sm">' +
         c.positions.length + ' position' + (c.positions.length === 1 ? '' : 's') + '</span></div>' +
         '<div class="table-wrap"><table class="data"><thead><tr>' +
         '<th>Position</th><th>Candidate</th><th>Votes</th><th>Share</th><th>Outcome</th>' +
@@ -300,8 +331,25 @@
       ['Turnout (of registered %)', c.turnoutAll],
       ['Turnout (of active %)', c.turnoutActive],
       [],
-      ['Position', 'Candidate', 'Votes', 'Share %', 'Outcome']
+      ['Position', 'Winner', 'Winner votes', 'Winner share %', 'Status'],
     ];
+    c.outcomes.forEach(function (o) {
+      if (!o.list.length) {
+        rows.push([o.position.name, '(no candidates)', '', '', 'No contest']);
+      } else if (!o.top) {
+        rows.push([o.position.name, '(no votes yet)', 0, 0, 'Pending']);
+      } else {
+        const tied = o.leaders.length > 1;
+        const names = o.leaders.map(function (l) { return l.name; }).join('; ');
+        const pct = o.total ? Math.round((o.top / o.total) * 100) : 0;
+        const status = tied ? 'Tie' : (e.status === 'closed' ? 'Winner' : 'Leading');
+        rows.push([o.position.name, names, o.top, pct, status]);
+      }
+    });
+    rows.push(
+      [],
+      ['Position', 'Candidate', 'Votes', 'Share %', 'Outcome']
+    );
     c.outcomes.forEach(function (o) {
       if (!o.list.length) {
         rows.push([o.position.name, '(no active candidates)', 0, 0, '']);
