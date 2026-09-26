@@ -241,6 +241,13 @@ textarea.input { resize: vertical; min-height: 70px; }
 .input-error { border-color: var(--danger) !important; }
 .field-error { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
 
+/* password visibility toggle */
+.pw-wrap { position: relative; }
+.pw-wrap > .input { padding-right: 42px; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a0b4; padding: 6px; border-radius: 6px; line-height: 0; }
+.pw-toggle:hover { color: var(--primary); background: #f1f5f9; }
+.pw-toggle svg { width: 20px; height: 20px; }
+
 /* table */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; box-shadow: var(--shadow); }
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
