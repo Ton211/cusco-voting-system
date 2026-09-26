@@ -90,9 +90,11 @@
         .catch(function () { return { size: 0 }; });
       candidatesCount = candSnap.size;
       votesCast = castByElection[focus.id] || 0;
-      $statScope.textContent = 'Showing numbers for: ' + focus.name;
+      $statScope.textContent = '';
+      $statScope.style.display = 'none';
     } else {
       $statScope.textContent = 'No elections yet. Create one to get started.';
+      $statScope.style.display = '';
     }
 
     const turnout = activeVoters ? Math.min(100, Math.round((votesCast / activeVoters) * 100)) : 0;
