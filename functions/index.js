@@ -8,13 +8,17 @@
 //    - count one vote per voter per election atomically (transaction)
 //    - keep ballots separate from voter identity
 //
-//  Region: default (us-central1). Keep this in sync with
-//  FIREBASE_FUNCTIONS_REGION in js/firebase-config.js if you change it.
+//  Region: africa-south1 (Johannesburg) for low latency in Kenya.
+//  Keep this in sync with FIREBASE_FUNCTIONS_REGION in
+//  js/firebase-config.js if you change it.
 // =====================================================================
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+
+// All functions (callables + scheduled) run in Africa.
+const fn = functions.region('africa-south1');
 
 admin.initializeApp();
 
@@ -106,7 +110,7 @@ function rateLimit(name, key) {
 }
 
 function HttpsError(code, message) {
-  return new functions.https.HttpsError(code, message);
+  return new fn.https.HttpsError(code, message);
 }
 
 function requireAuth(context) {
@@ -187,7 +191,7 @@ async function generateVoterId() {
 //  Only a Super Admin may create accounts. The plain admin role is
 //  view-only, as are director / principal / dean / registrar.
 // ---------------------------------------------------------------------
-exports.registerUser = functions.https.onCall(async (data, context) => {
+exports.registerUser = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('registerUser', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -286,7 +290,7 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
 //  updateUser
 //  Only a Super Admin may update profiles or activate/deactivate.
 // ---------------------------------------------------------------------
-exports.updateUser = functions.https.onCall(async (data, context) => {
+exports.updateUser = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('updateUser', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -343,7 +347,7 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
 //  resetPassword
 //  Only a Super Admin may reset passwords.
 // ---------------------------------------------------------------------
-exports.resetPassword = functions.https.onCall(async (data, context) => {
+exports.resetPassword = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('resetPassword', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -388,7 +392,7 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
 //  screen (self-registered voters, legacy flagged accounts) and the
 //  voter profile page.
 // ---------------------------------------------------------------------
-exports.changeOwnPassword = functions.https.onCall(async (data, context) => {
+exports.changeOwnPassword = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   const uid = requireAuth(context);
   rateLimit('changeOwnPassword', uid);
@@ -426,7 +430,7 @@ exports.changeOwnPassword = functions.https.onCall(async (data, context) => {
 //  Super Admin uploads the official student list (adm + full name).
 //  Students can only self-register when their adm number is on this list.
 // ---------------------------------------------------------------------
-exports.importStudents = functions.https.onCall(async (data, context) => {
+exports.importStudents = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('importStudents', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -481,7 +485,7 @@ exports.importStudents = functions.https.onCall(async (data, context) => {
 //  A listed student who already registered cannot be deleted (their login
 //  account depends on the entry).
 // ---------------------------------------------------------------------
-exports.updateStudent = functions.https.onCall(async (data, context) => {
+exports.updateStudent = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('updateStudent', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -498,7 +502,7 @@ exports.updateStudent = functions.https.onCall(async (data, context) => {
   return { ok: true };
 });
 
-exports.deleteStudent = functions.https.onCall(async (data, context) => {
+exports.deleteStudent = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('deleteStudent', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -522,7 +526,7 @@ exports.deleteStudent = functions.https.onCall(async (data, context) => {
 //  Public self signup guarded by the admin-imported studentList.
 //  Adm must exist on the list and must not already have an account.
 // ---------------------------------------------------------------------
-exports.selfRegisterVoter = functions.https.onCall(async (data, context) => {
+exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('selfRegisterVoter', context.auth ? context.auth.uid : clientIp(context));
 
@@ -591,7 +595,7 @@ exports.selfRegisterVoter = functions.https.onCall(async (data, context) => {
 //  Auth and is set via the Firebase console or resetPassword. This doc
 //  only stores the username -> email mapping.
 // ---------------------------------------------------------------------
-exports.setStaffAlias = functions.https.onCall(async (data, context) => {
+exports.setStaffAlias = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('setStaffAlias', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -632,7 +636,7 @@ exports.setStaffAlias = functions.https.onCall(async (data, context) => {
 //  valid usernames. Password verification still happens via Firebase
 //  Auth sign-in on the client.
 // ---------------------------------------------------------------------
-exports.resolveStaffUsername = functions.https.onCall(async (data, context) => {
+exports.resolveStaffUsername = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('resolveStaffUsername', clientIp(context));
 
@@ -648,7 +652,7 @@ exports.resolveStaffUsername = functions.https.onCall(async (data, context) => {
 // ---------------------------------------------------------------------
 //  setUserRole  (Super Admin only): used to grant/revoke admin powers
 // ---------------------------------------------------------------------
-exports.setUserRole = functions.https.onCall(async (data, context) => {
+exports.setUserRole = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('setUserRole', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -673,7 +677,7 @@ exports.setUserRole = functions.https.onCall(async (data, context) => {
 //  you cannot delete yourself, and the last Super Admin cannot be
 //  deleted (that would lock everyone out of staff management).
 // ---------------------------------------------------------------------
-exports.deleteUser = functions.https.onCall(async (data, context) => {
+exports.deleteUser = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('deleteUser', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -713,7 +717,7 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
 //  Create or update an election. Only one election can be ACTIVE at a
 //  time: opening one automatically closes any other active election.
 // ---------------------------------------------------------------------
-exports.saveElection = functions.https.onCall(async (data, context) => {
+exports.saveElection = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('saveElection', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -799,7 +803,7 @@ function tsMillis(t) {
 //  Removes the election plus its positions, candidates and aggregate
 //  votes doc. Active elections cannot be deleted: close first.
 // ---------------------------------------------------------------------
-exports.deleteElection = functions.https.onCall(async (data, context) => {
+exports.deleteElection = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('deleteElection', context.auth ? context.auth.uid : clientIp(context));
   requireSuperAdmin(context);
@@ -857,7 +861,7 @@ function windowMs(ts) {
 //  The createVote transaction independently refuses any vote outside
 //  the window, so timing stays strict even between scheduler ticks.
 // ---------------------------------------------------------------------
-exports.enforceElectionWindows = functions.pubsub.schedule('every 1 minutes').onRun(async () => {
+exports.enforceElectionWindows = fn.pubsub.schedule('every 1 minutes').onRun(async () => {
   const now = Date.now();
   const snap = await db.collection('elections').get();
   if (snap.empty) return null;
@@ -913,7 +917,7 @@ exports.enforceElectionWindows = functions.pubsub.schedule('every 1 minutes').on
 //  is stored on the voter's profile that proves a vote was recorded but
 //  does not reveal the choices.
 // ---------------------------------------------------------------------
-exports.createVote = functions.https.onCall(async (data, context) => {
+exports.createVote = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   const uid = requireAuth(context);
   rateLimit('createVote', uid);
@@ -1025,7 +1029,7 @@ exports.createVote = functions.https.onCall(async (data, context) => {
 //  One-time call to create the very first Super Admin. Safe because it
 //  refuses to run once a Super Admin already exists.
 // ---------------------------------------------------------------------
-exports.bootstrapSuperAdmin = functions.https.onCall(async (data, context) => {
+exports.bootstrapSuperAdmin = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('bootstrapSuperAdmin', clientIp(context));
   const existing = await db.collection('users').where('role', '==', 'superadmin').limit(1).get();
