@@ -80,6 +80,7 @@
   }
 
   function render(q) {
+    const viewer = window.isViewer();
     const filtered = allCandidates.filter(function (c) {
       if (!q) return true;
       const hay = (c.name + ' ' + electionName(c.electionId) + ' ' + positionName(c.positionId)).toLowerCase();
@@ -92,6 +93,13 @@
       const photo = c.photo
         ? '<img class="avatar" src="' + esc(c.photo) + '" alt="" style="object-fit:cover;">'
         : '<span class="avatar sm">' + esc(initials(c.name)) + '</span>';
+      const actionCell = viewer
+        ? '<span class="muted">—</span>'
+        : '<div class="row-actions">' +
+          '<button class="btn btn-outline btn-sm" data-action="edit" data-id="' + esc(c.id) + '">Edit</button>' +
+          '<button class="btn btn-sm ' + (c.status === 'active' ? 'btn-danger-inline' : 'btn-success-inline') + '" data-action="toggle" data-id="' + esc(c.id) + '">' + (c.status === 'active' ? 'Deactivate' : 'Activate') + '</button>' +
+          '<button class="btn btn-danger-outline btn-sm" data-action="delete" data-id="' + esc(c.id) + '">Delete</button>' +
+          '</div>';
       return (
         '<tr>' +
         '<td>' + photo + '</td>' +
@@ -99,11 +107,7 @@
         '<td>' + esc(positionName(c.positionId)) + '</td>' +
         '<td>' + esc(electionName(c.electionId)) + '</td>' +
         '<td>' + (c.status === 'active' ? '<span class="badge active">Active</span>' : '<span class="badge inactive">Inactive</span>') + '</td>' +
-        '<td><div class="row-actions">' +
-        '<button class="btn btn-outline btn-sm" data-action="edit" data-id="' + esc(c.id) + '">Edit</button>' +
-        '<button class="btn btn-sm ' + (c.status === 'active' ? 'btn-danger-inline' : 'btn-success-inline') + '" data-action="toggle" data-id="' + esc(c.id) + '">' + (c.status === 'active' ? 'Deactivate' : 'Activate') + '</button>' +
-        '<button class="btn btn-danger-outline btn-sm" data-action="delete" data-id="' + esc(c.id) + '">Delete</button>' +
-        '</div></td>' +
+        '<td>' + actionCell + '</td>' +
         '</tr>'
       );
     }).join('');
@@ -302,6 +306,9 @@
 
   window.authPromise.then(function () {
     addBtnStyles();
+    // View-only staff can see candidates but cannot register or edit.
+    window.hideForViewer('#openRegisterBtn');
+    window.hideForViewer('#emptyRegisterBtn');
     return loadMeta();
   }).then(function () {
     render('');

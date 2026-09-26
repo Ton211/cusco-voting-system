@@ -1,6 +1,29 @@
 // =====================================================================
-//  Shared admin panel chrome: sidebar name, active nav, logout
+//  Shared admin panel chrome: sidebar name, active nav, logout,
+//  view-only staff limits (director, principal, dean, registrar)
 // =====================================================================
+
+// Pages a view-only staff member may open. Everything else in the
+// admin portal (students, voters, positions, users) redirects away.
+window.VIEWER_PAGES = [
+  '/admin/dashboard.html',
+  '/admin/candidates.html',
+  '/admin/elections.html',
+  '/admin/live.html',
+  '/admin/results.html',
+  '/admin/reports.html'
+];
+
+window.isViewer = function () {
+  return window.isViewerRole((window.__auth || {}).role);
+};
+
+// Hide a control for view-only staff. Safe to call for any role.
+window.hideForViewer = function (sel) {
+  if (!window.isViewer()) return;
+  qsa(sel).forEach(function (el) { el.style.display = 'none'; });
+};
+
 (function () {
   window.authPromise.then(function (a) {
     if (!a.user || !a.role) return;
@@ -9,7 +32,22 @@
     if (nameEl) {
       const full = a.user.displayName || a.user.email || 'Admin';
       const short = String(full).split(' ')[0] || 'Admin';
-      nameEl.innerHTML = '<strong>' + esc(short) + '</strong><span>' + esc(a.role) + '</span>';
+      const label = String(a.role).charAt(0).toUpperCase() + String(a.role).slice(1);
+      nameEl.innerHTML = '<strong>' + esc(short) + '</strong><span>' + esc(label) + '</span>';
+    }
+
+    // View-only staff: trim the sidebar to the pages they may see,
+    // and bounce them out of any other admin page.
+    if (window.isViewerRole(a.role)) {
+      qsa('.sidebar nav a').forEach(function (link) {
+        if (window.VIEWER_PAGES.indexOf(link.getAttribute('href')) === -1) {
+          link.style.display = 'none';
+        }
+      });
+      if (window.VIEWER_PAGES.indexOf(location.pathname) === -1) {
+        location.replace('/admin/dashboard.html');
+        return;
+      }
     }
 
     const logoutBtn = document.getElementById('logoutBtn');

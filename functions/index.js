@@ -22,7 +22,15 @@ const db = admin.firestore();
 const inc = admin.firestore.FieldValue.increment;
 const serverNow = admin.firestore.FieldValue.serverTimestamp;
 
-const ROLES = ['voter', 'admin', 'superadmin'];
+const ROLES = ['voter', 'admin', 'superadmin', 'director', 'principal', 'dean', 'registrar'];
+
+//  View-only staff roles: may see dashboard (read-only), candidates,
+//  elections, live, results and reports. They cannot mutate anything:
+//  every mutating function below requires admin/superadmin, so these
+//  roles are denied by default. Only creation/role-assignment (which
+//  validates against ROLES) and reads need to allow them.
+const VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar'];
+const STAFF_ROLES = ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar'];
 
 // ---------------------------------------------------------------------
 //  Optionally require a trusted App Check token on callable functions.
@@ -696,8 +704,8 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
   const userDoc = await db.collection('users').doc(uid).get();
   if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
   const target = userDoc.data() || {};
-  if (!['admin', 'superadmin'].includes(target.role)) {
-    throw HttpsError('failed-precondition', 'Only staff accounts (admin / superadmin) can be deleted here.');
+  if (!STAFF_ROLES.includes(target.role)) {
+    throw HttpsError('failed-precondition', 'Only staff accounts can be deleted here.');
   }
 
   if (target.role === 'superadmin') {

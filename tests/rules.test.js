@@ -7,7 +7,7 @@
 //  Covers the Phase 13 attack surface matrix against firestore.rules:
 //  server-write-only users/elections, schema-bound positions/candidates,
 //  admin-only votes read, pinned settings — each exercised from
-//  anonymous, voter and admin contexts.
+//  anonymous, voter, admin and view-only staff (director) contexts.
 // =====================================================================
 
 const {
@@ -29,6 +29,7 @@ let anon;
 let voterA;
 let voterB;
 let adminU;
+let viewerD; // director: view-only staff
 
 const now = new Date();
 const ELECTION = {
@@ -109,6 +110,7 @@ async function main() {
   voterA = env.authenticatedContext('voterA', { role: 'voter' }).firestore();
   voterB = env.authenticatedContext('voterB', { role: 'voter' }).firestore();
   adminU = env.authenticatedContext('adminU', { role: 'admin' }).firestore();
+  viewerD = env.authenticatedContext('viewerD', { role: 'director' }).firestore();
 
   // ------------------------------------------------------------------
   //  1. Unauthenticated user attempts to access voters
@@ -343,6 +345,25 @@ async function main() {
     }));
     await assertFails(adminU.collection('studentList').doc('BAD').set({ admNumber: 'BAD' }));
     await assertSucceeds(adminU.collection('studentList').doc('ADM001').get());
+  });
+
+  await test('X8 view-only staff (director) can read dashboards but cannot write', async () => {
+    // Reads needed by dashboard / candidates / election / live / results / reports.
+    await assertSucceeds(viewerD.collection('users').doc('voterA').get());
+    await assertSucceeds(viewerD.collection('users').get());
+    await assertSucceeds(viewerD.collection('votes').doc(eId).get());
+    await assertSucceeds(viewerD.collection('positions').doc(eId + '_0').get());
+    await assertSucceeds(viewerD.collection('candidates').doc('cand_1_ok').get());
+    await assertSucceeds(viewerD.collection('elections').doc(eId).get());
+    await assertSucceeds(viewerD.collection('settings').doc('resultsVisibility').get());
+    // No writes anywhere, and no student-list access.
+    await assertFails(viewerD.collection('users').doc('voterA').update({ status: 'inactive' }));
+    await assertFails(viewerD.collection('users').doc('voterA').delete());
+    await assertFails(viewerD.collection('votes').doc(eId).set({ totalVotes: 1 }));
+    await assertFails(viewerD.collection('candidates').doc('cand_1_ok').update({ name: 'Hax' }));
+    await assertFails(viewerD.collection('positions').doc(eId + '_0').delete());
+    await assertFails(viewerD.collection('settings').doc('resultsVisibility').update({ hideUntilClose: false, electionId: eId, updatedAt: now }));
+    await assertFails(viewerD.collection('studentList').doc('ADM001').get());
   });
 
   // ------------------------------------------------------------------

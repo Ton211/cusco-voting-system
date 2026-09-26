@@ -108,17 +108,18 @@
   }
 
   function renderList(rows) {
+    const viewer = window.isViewer();
     if (!rows.length) {
       $list.innerHTML =
         '<div class="empty">No elections yet.</div>' +
-        '<div class="center"><a class="btn btn-primary" href="/admin/elections.html">Create Election</a></div>';
+        (viewer ? '' : '<div class="center"><a class="btn btn-primary" href="/admin/elections.html">Create Election</a></div>');
       return;
     }
     $list.innerHTML = rows.map(function (row) {
       const e = row.election;
-      const actions = e.status === 'active'
+      const actions = viewer ? '' : (e.status === 'active'
         ? '<button class="btn btn-danger-outline btn-sm" data-action="close" data-eid="' + esc(e.id) + '">Close</button>'
-        : '<button class="btn btn-outline btn-sm" data-action="open" data-eid="' + esc(e.id) + '">Open</button>';
+        : '<button class="btn btn-outline btn-sm" data-action="open" data-eid="' + esc(e.id) + '">Open</button>');
       return (
         '<div class="card" data-eid="' + esc(e.id) + '">' +
         '<div class="card-title">' +
@@ -166,6 +167,8 @@
   }
 
   window.authPromise.then(function () {
+    // View-only staff see numbers only: no quick actions, no open/close.
+    window.hideForViewer('#nextStepsCard');
     load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load); }).catch(function (err) {
       $list.innerHTML = '<p class="muted">Could not load dashboard data.</p>';
       toast('Could not load dashboard: ' + friendlyError(err), 'error');

@@ -435,7 +435,11 @@
       roleSelect.innerHTML =
         '<option value="voter">Voter</option>' +
         '<option value="admin">Admin</option>' +
-        '<option value="superadmin">Super Admin</option>';
+        '<option value="superadmin">Super Admin</option>' +
+        '<option value="director">Director (view only)</option>' +
+        '<option value="principal">Principal (view only)</option>' +
+        '<option value="dean">Dean (view only)</option>' +
+        '<option value="registrar">Registrar (view only)</option>';
     }
     plusActivateButtonsCss();
     return load().then(function () { liveCollections([DB.collection('users'), DB.collection('studentList')], load); });

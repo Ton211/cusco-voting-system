@@ -4,7 +4,9 @@
 //  with class "auth-hidden" and only becomes visible once access has
 //  been verified.
 //
-//  data-page="admin"  -> admin/superadmin only
+//  data-page="admin"  -> admin/superadmin + view-only staff
+//                       (director, principal, dean, registrar;
+//                       per-page limits enforced in admin-common.js)
 //  data-page="voter"  -> voter only
 //  data-page="login"        -> shared login
 //  data-page="admin-login"  -> separate ADMIN portal login
@@ -12,6 +14,13 @@
 // =====================================================================
 
 window.__auth = { user: null, role: null };
+
+// View-only staff roles. They use the admin portal but may only see
+// dashboard (read-only), candidates, election, live, results, reports.
+window.VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar'];
+window.isViewerRole = function (role) {
+  return window.VIEWER_ROLES.indexOf(role) !== -1;
+};
 
 (function () {
   const mode = document.body.dataset.page || 'public';
@@ -24,7 +33,7 @@ window.__auth = { user: null, role: null };
 
   function homeForRole(role) {
     if (role === 'voter') return '/voter/dashboard.html';
-    if (role === 'admin' || role === 'superadmin') return '/admin/dashboard.html';
+    if (role === 'admin' || role === 'superadmin' || window.isViewerRole(role)) return '/admin/dashboard.html';
     return VOTER_LOGIN;
   }
 
@@ -98,7 +107,7 @@ window.__auth = { user: null, role: null };
           // Voter-only login: staff accounts are rejected here and
           // redirected to the staff portal.
           if (mode === 'login') {
-            if (role === 'admin' || role === 'superadmin') {
+            if (role === 'admin' || role === 'superadmin' || window.isViewerRole(role)) {
               AUTH.signOut().then(function () { redirect(STAFF_LOGIN + '?staff=1'); });
             } else {
               redirect(homeForRole(role));
@@ -110,7 +119,7 @@ window.__auth = { user: null, role: null };
             return;
           }
           if (mode === 'admin') {
-            if (role === 'admin' || role === 'superadmin') reveal();
+            if (role === 'admin' || role === 'superadmin' || window.isViewerRole(role)) reveal();
             else redirect(role === 'voter' ? '/voter/dashboard.html' : STAFF_LOGIN);
             return;
           }

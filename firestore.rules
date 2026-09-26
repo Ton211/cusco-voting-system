@@ -18,6 +18,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role in ['admin', 'superadmin'];
     }
 
+    // View-only staff (director, principal, dean, registrar). They may
+    // read the data shown on dashboard / candidates / election / live /
+    // results / reports, but every write rule below still requires
+    // isAdmin(), so they cannot change anything.
+    function isStaffViewer() {
+      return isSignedIn() && request.auth.token.role in ['director', 'principal', 'dean', 'registrar'];
+    }
+
     function isOwnUser(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -52,11 +60,11 @@ service cloud.firestore {
     // flag, or hand themselves a receipt.
     // ------------------------------------------------------------------
     match /users/{userId} {
-      allow read: if isOwnUser(userId) || isAdmin();
+      allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
       allow write: if false;
 
       match /receipts/{receiptId} {
-        allow read: if isOwnUser(userId) || isAdmin();
+        allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
         allow write: if false; // only the createVote Cloud Function writes these
       }
     }
@@ -148,7 +156,7 @@ service cloud.firestore {
     }
 
     match /votes/{electionId} {
-      allow read: if isAdmin() || (isVoter() && resultsReleased());
+      allow read: if isAdmin() || isStaffViewer() || (isVoter() && resultsReleased());
       allow write: if false;
     }
 

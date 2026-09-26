@@ -46,22 +46,25 @@
   }
 
   function render() {
+    const viewer = window.isViewer();
     if (!elections.length) {
-      $list.innerHTML = '<div class="empty">No elections yet. Click "+ Create Election" to start.</div>';
+      $list.innerHTML = '<div class="empty">No elections yet.' + (viewer ? '' : ' Click "+ Create Election" to start.') + '</div>';
       return;
     }
     $list.innerHTML = elections.map(function (e) {
-      return (
-        '<div class="card" data-eid="' + esc(e.id) + '">' +
-        '<div class="card-title">' +
-        '<span>' + esc(e.name) + ' ' + badgeFor(e.status) + '</span>' +
+      const rowActions = viewer ? '' :
         '<div class="row-actions">' +
         (e.status === 'active'
           ? '<button class="btn btn-danger-outline btn-sm" data-action="close" data-eid="' + esc(e.id) + '">Close</button>'
           : '<button class="btn btn-outline btn-sm" data-action="open" data-eid="' + esc(e.id) + '">Open</button>') +
         '<button class="btn btn-outline btn-sm" data-action="edit" data-eid="' + esc(e.id) + '">Edit</button>' +
         '<button class="btn btn-danger-outline btn-sm" data-action="delete" data-eid="' + esc(e.id) + '">Delete</button>' +
-        '</div>' +
+        '</div>';
+      return (
+        '<div class="card" data-eid="' + esc(e.id) + '">' +
+        '<div class="card-title">' +
+        '<span>' + esc(e.name) + ' ' + badgeFor(e.status) + '</span>' +
+        rowActions +
         '</div>' +
         '<div class="muted" style="font-size:13px;">Voting window: <strong>' + fmtDateTime(e.startTime) + '</strong> to <strong>' + fmtDateTime(e.endTime) + '</strong></div>' +
         '</div>'
@@ -207,6 +210,8 @@
   eleModal.addEventListener('click', function (e) { if (e.target === eleModal) closeModal('electionModal'); });
 
   window.authPromise.then(function () {
+    // View-only staff can see elections but cannot create or change them.
+    window.hideForViewer('#openCreateBtn');
     return load().then(function () { liveCollections([DB.collection('elections')], load); });
   }).catch(function (err) {
     $list.innerHTML = '<div class="empty">Could not load elections: ' + esc(friendlyError(err)) + '</div>';

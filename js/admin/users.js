@@ -25,6 +25,10 @@
 
   function roleBadge(role) {
     if (role === 'superadmin') return '<span class="badge superadmin">Super Admin</span>';
+    if (window.isViewerRole(role)) {
+      const label = String(role).charAt(0).toUpperCase() + String(role).slice(1);
+      return '<span class="badge scheduled">' + esc(label) + '</span>';
+    }
     return '<span class="badge admin">Admin</span>';
   }
 
@@ -62,7 +66,7 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin']).get();
+    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar']).get();
     allStaff = snap.docs.map(function (doc) {
       return Object.assign({ uid: doc.id }, doc.data());
     });
@@ -119,7 +123,8 @@
       document.getElementById('resetForm').reset();
       openModal('resetModal');
     } else if (btn.dataset.action === 'role') {
-      const next = u.role === 'superadmin' ? 'admin' : 'superadmin';
+      // View-only staff can only be promoted to full admin here.
+      const next = window.isViewerRole(u.role) ? 'admin' : (u.role === 'superadmin' ? 'admin' : 'superadmin');
       const ok = await confirmDialog({ title: 'Change role', message: 'Set ' + u.fullName + ' as ' + next + '?', confirmText: 'Confirm' });
       if (!ok) return;
       try {
@@ -211,7 +216,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin'])], load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });
