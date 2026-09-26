@@ -58,21 +58,61 @@ function shortId(prefix) {
 let toastRoot = null;
 
 function toast(message, type) {
-  const TYPES = { success: '#16a34a', error: '#dc2626', info: '#4f46e5', warn: '#d97706' };
+  const kind = type || 'info';
+  const TITLES = { success: 'Success', error: 'Error', info: 'Notice', warn: 'Warning' };
+  const ICONS = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  };
   if (!toastRoot) {
     toastRoot = document.createElement('div');
     toastRoot.className = 'toast-root';
     document.body.appendChild(toastRoot);
   }
   const t = document.createElement('div');
-  t.className = 'toast';
-  t.style.borderLeftColor = TYPES[type || 'info'];
-  t.textContent = message;
-  toastRoot.appendChild(t);
-  setTimeout(() => {
+  t.className = 'toast toast-' + (TITLES[kind] ? kind : 'info');
+
+  const ic = document.createElement('span');
+  ic.className = 'toast-ic';
+  ic.innerHTML = ICONS[kind] || ICONS.info;
+
+  const body = document.createElement('div');
+  body.className = 'toast-body';
+  const title = document.createElement('div');
+  title.className = 'toast-title';
+  title.textContent = TITLES[kind] || TITLES.info;
+  const msg = document.createElement('div');
+  msg.className = 'toast-msg';
+  msg.textContent = message;
+  body.appendChild(title);
+  body.appendChild(msg);
+
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'toast-x';
+  x.setAttribute('aria-label', 'Dismiss notification');
+  x.textContent = '×';
+
+  const bar = document.createElement('span');
+  bar.className = 'toast-bar';
+
+  let gone = false;
+  function dismiss() {
+    if (gone) return;
+    gone = true;
     t.classList.add('toast-hide');
-    setTimeout(() => t.remove(), 300);
-  }, 3600);
+    setTimeout(() => t.remove(), 320);
+  }
+  x.addEventListener('click', dismiss);
+
+  t.appendChild(ic);
+  t.appendChild(body);
+  t.appendChild(x);
+  t.appendChild(bar);
+  toastRoot.appendChild(t);
+  setTimeout(dismiss, 3600);
 }
 
 // ---------------------------------------------------------------
@@ -87,6 +127,7 @@ function friendlyError(err) {
     'auth/user-disabled': 'This account has been deactivated.',
     'auth/invalid-email': 'Enter a valid email address.',
     'auth/invalid-login-credentials': 'Incorrect email or password.',
+    'auth/invalid-credential': 'Incorrect username/email or password. Check and try again.',
     'auth/weak-password': 'Password must be at least 6 characters.',
     'auth/email-already-in-use': 'That email is already registered.',
     'unauthenticated': 'You must be signed in.',
