@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Results | CUSCO Voting System</title>
+  <title>Reports | CUSCO Voting System</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="admin" class="auth-hidden">
@@ -32,41 +32,58 @@
     <main class="content">
       <div class="page-head">
         <div>
-          <h1>Election Results</h1>
-          <p>Vote totals per position, plus turnout.</p>
+          <h1>Election Report</h1>
+          <p>Users &#8596; Results — turnout, winners and participation for one election.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;" class="no-print">
+          <button class="btn btn-outline" id="printBtn" type="button">Print</button>
+          <button class="btn btn-outline" id="csvSummaryBtn" type="button">Export summary CSV</button>
+          <button class="btn btn-primary" id="csvVotersBtn" type="button">Export voters CSV</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="form-grid" style="grid-template-columns:2fr 1fr; align-items:end;">
+        <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr; align-items:end;">
           <div class="form-group">
-            <label for="resultsElection">Election</label>
-            <select class="input" id="resultsElection">
+            <label for="reportElection">Election</label>
+            <select class="input" id="reportElection">
               <option value="">Select an election…</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="pill-toggle">
-              <input type="checkbox" id="hideUntilClose">
-              <span>Hide results until the election closes</span>
-            </label>
+            <label for="filterVoted">Participation</label>
+            <select class="input" id="filterVoted">
+              <option value="all">All voters</option>
+              <option value="voted">Voted only</option>
+              <option value="not">Not voted only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reportSearch">Search voters</label>
+            <input class="input" type="search" id="reportSearch" placeholder="Adm, name…">
           </div>
         </div>
+        <p class="muted text-sm" id="reportMeta">Select an election above to build the report.</p>
       </div>
 
-      <div id="resultsBody">
-        <div class="empty">Select an election above to view results.</div>
+      <div id="reportBody">
+        <div class="empty">No report yet — pick an election.</div>
       </div>
     </main>
   </div>
 
   <style>
-    .pill-toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; }
-    .pill-toggle input { accent-color: var(--primary); width:16px; height:16px; }
-    .result-card { margin-bottom: 18px; }
-    .result-row { margin-bottom: 14px; }
-    .result-row .row-meta { display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px; }
-    .result-row .count { font-weight:700; color:var(--primary); }
+    @media print {
+      .sidebar, .page-head .no-print, .card:first-of-type, .report-filters { display: none !important; }
+      .admin-shell { display: block; }
+      .content { padding: 0; }
+      body { background: #fff; }
+      .card, .stat { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+    }
+    .kv { display:grid; grid-template-columns: 190px 1fr; gap:4px 12px; font-size:14px; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin:0; font-weight:600; }
+    .report-filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -82,6 +99,6 @@
   <script src="/js/utils.js"></script>
   <script src="/js/auth-guard.js"></script>
   <script src="/js/admin-common.js"></script>
-  <script src="/js/admin/results.js"></script>
+  <script src="/js/admin/reports.js"></script>
 </body>
 </html>
