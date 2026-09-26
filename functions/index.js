@@ -71,6 +71,7 @@ const RATE_LIMITS = {
   resolveStaffUsername: { windowMs: 15 * 60 * 1000, max: 10 },
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },
   updateUser: { windowMs: 60 * 60 * 1000, max: 60 },
+  deleteUser: { windowMs: 60 * 60 * 1000, max: 30 },
   saveElection: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteElection: { windowMs: 60 * 60 * 1000, max: 30 },
   bootstrapSuperAdmin: { windowMs: 60 * 60 * 1000, max: 3 }
@@ -674,6 +675,47 @@ exports.setUserRole = functions.https.onCall(async (data, context) => {
   await db.collection('users').doc(uid).update({ role: role, updatedAt: serverNow() });
 
   // Role evolves immediately for the target user's next token refresh.
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------------
+//  deleteUser  (Super Admin only): permanently removes a staff account
+//  (admin / superadmin) from Firebase Auth and Firestore. Guards:
+//  you cannot delete yourself, and the last Super Admin cannot be
+//  deleted (that would lock everyone out of staff management).
+// ---------------------------------------------------------------------
+exports.deleteUser = functions.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('deleteUser', context.auth ? context.auth.uid : clientIp(context));
+  requireSuperAdmin(context);
+  const callerUid = context.auth.uid;
+  const uid = String(data.uid || '');
+  if (!uid) throw HttpsError('invalid-argument', 'User id is required.');
+  if (uid === callerUid) throw HttpsError('failed-precondition', 'You cannot delete your own account.');
+
+  const userDoc = await db.collection('users').doc(uid).get();
+  if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
+  const target = userDoc.data() || {};
+  if (!['admin', 'superadmin'].includes(target.role)) {
+    throw HttpsError('failed-precondition', 'Only staff accounts (admin / superadmin) can be deleted here.');
+  }
+
+  if (target.role === 'superadmin') {
+    const remaining = await db.collection('users').where('role', '==', 'superadmin').get();
+    const others = remaining.docs.filter(function (d) { return d.id !== uid; });
+    if (!others.length) {
+      throw HttpsError('failed-precondition', 'The last Super Admin cannot be deleted.');
+    }
+  }
+
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (err) {
+    if (err.code !== 'auth/user-not-found') {
+      throw HttpsError('internal', 'Could not delete the login account: ' + err.message);
+    }
+  }
+  await db.collection('users').doc(uid).delete();
   return { ok: true };
 });
 

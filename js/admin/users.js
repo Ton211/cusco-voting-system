@@ -17,6 +17,7 @@
   const updateUser = callable('updateUser');
   const resetPasswordFn = callable('resetPassword');
   const setUserRoleFn = callable('setUserRole');
+  const deleteUserFn = callable('deleteUser');
 
   const $tbody = document.getElementById('usersTableBody');
   const $empty = document.getElementById('emptyState');
@@ -40,6 +41,7 @@
       .sort(function (a, b) { return (a.fullName || '').localeCompare(b.fullName || ''); })
       .map(function (u) {
         const self = u.uid === myUid ? ' <span class="muted">(you)</span>' : '';
+        const isSelf = u.uid === myUid;
         const status = u.status === 'inactive'
           ? '<span class="badge inactive">Inactive</span>'
           : '<span class="badge active">Active</span>';
@@ -52,6 +54,7 @@
           '<button class="btn btn-outline btn-sm" data-action="role" data-uid="' + esc(u.uid) + '">Role</button>' +
           '<button class="btn btn-ghost btn-sm" data-action="reset" data-uid="' + esc(u.uid) + '">Reset</button>' +
           '<button class="btn btn-sm ' + (u.status === 'inactive' ? 'btn-success-inline' : 'btn-danger-inline') + '" data-action="toggle" data-uid="' + esc(u.uid) + '">' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '</button>' +
+          (isSelf ? '' : '<button class="btn btn-danger btn-sm" data-action="delete" data-uid="' + esc(u.uid) + '">Delete</button>') +
           '</div></td>' +
           '</tr>';
       })
@@ -138,6 +141,22 @@
       try {
         await updateUser({ uid: uid, status: next });
         toast('Status updated.', 'success');
+        await load();
+      } catch (err) {
+        toast(callFriendly(err).message, 'error');
+      }
+    } else if (btn.dataset.action === 'delete') {
+      if (uid === myUid) { toast('You cannot delete your own account.', 'error'); return; }
+      const ok = await confirmDialog({
+        title: 'Delete staff',
+        message: 'Permanently delete ' + u.fullName + ' (' + (u.email || 'no email') + ')? They will no longer be able to sign in. This cannot be undone.',
+        confirmText: 'Delete',
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        await deleteUserFn({ uid: uid });
+        toast('Staff account deleted.', 'success');
         await load();
       } catch (err) {
         toast(callFriendly(err).message, 'error');
