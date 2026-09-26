@@ -121,9 +121,9 @@
           } catch (e2) { last = e2; }
         }
         if (ok) return;
-        showError(friendlyError(last));
+        toast(friendlyError(last), 'error');
       } else {
-        showError(friendlyError(err));
+        toast(friendlyError(err), 'error');
       }
       submitBtn.disabled = false;
       submitBtn.textContent = defaultBtnText;

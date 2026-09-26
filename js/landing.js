@@ -105,7 +105,7 @@
           } catch (e2) { last = e2; }
         }
         if (ok) return;
-        showError(friendlyError(last));
+        toast(friendlyError(last), 'error');
         loginBtn.disabled = false;
         loginBtn.textContent = 'Log In';
       }
