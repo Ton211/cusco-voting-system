@@ -46,7 +46,7 @@
   }
 
   function render() {
-    const viewer = window.isViewer();
+    const viewer = window.isReadOnly();
     if (!elections.length) {
       $list.innerHTML = '<div class="empty">No elections yet.' + (viewer ? '' : ' Click "+ Create Election" to start.') + '</div>';
       return;
@@ -211,7 +211,7 @@
 
   window.authPromise.then(function () {
     // View-only staff can see elections but cannot create or change them.
-    window.hideForViewer('#openCreateBtn');
+    window.hideForReadOnly('#openCreateBtn');
     return load().then(function () { liveCollections([DB.collection('elections')], load); });
   }).catch(function (err) {
     $list.innerHTML = '<div class="empty">Could not load elections: ' + esc(friendlyError(err)) + '</div>';

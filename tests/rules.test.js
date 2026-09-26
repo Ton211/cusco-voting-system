@@ -28,7 +28,8 @@ let seedDb; // Admin app -> bypasses rules (for seeding)
 let anon;
 let voterA;
 let voterB;
-let adminU;
+let adminU; // plain admin: view-only, like viewerD
+let superU; // superadmin: the only writer
 let viewerD; // director: view-only staff
 
 const now = new Date();
@@ -110,6 +111,7 @@ async function main() {
   voterA = env.authenticatedContext('voterA', { role: 'voter' }).firestore();
   voterB = env.authenticatedContext('voterB', { role: 'voter' }).firestore();
   adminU = env.authenticatedContext('adminU', { role: 'admin' }).firestore();
+  superU = env.authenticatedContext('superU', { role: 'superadmin' }).firestore();
   viewerD = env.authenticatedContext('viewerD', { role: 'director' }).firestore();
 
   // ------------------------------------------------------------------
@@ -174,11 +176,16 @@ async function main() {
   await test('9  admin CAN read all users (legit admin op)', async () => {
     await assertSucceeds(adminU.collection('users').get());
   });
-  await test('9b admin CAN create valid positions', async () => {
-    await assertSucceeds(adminU.collection('positions').doc('newpos').set({ electionId: eId, name: 'Treasurer', order: 2 }));
+  await test('9b admin is view-only: cannot create positions, superadmin can', async () => {
+    await assertFails(adminU.collection('positions').doc('newpos_admin').set({ electionId: eId, name: 'Treasurer', order: 2 }));
+    await assertSucceeds(superU.collection('positions').doc('newpos').set({ electionId: eId, name: 'Treasurer', order: 2 }));
   });
-  await test('9c admin CAN create valid candidates', async () => {
-    await assertSucceeds(adminU.collection('candidates').doc('cand_new').set({
+  await test('9c admin is view-only: cannot create candidates, superadmin can', async () => {
+    await assertFails(adminU.collection('candidates').doc('cand_new_admin').set({
+      electionId: eId, positionId: 'newpos', name: 'Caro',
+      description: '', status: 'active', createdAt: now
+    }));
+    await assertSucceeds(superU.collection('candidates').doc('cand_new').set({
       electionId: eId, positionId: 'newpos', name: 'Caro',
       description: '', status: 'active', createdAt: now
     }));
@@ -308,15 +315,17 @@ async function main() {
   });
 
   await test('X2 candidates binding keys are immutable on update', async () => {
-    await assertSucceeds(adminU.collection('candidates').doc('cand_1_ok').update({ name: 'Alma Renamed' }));
-    await assertFails(adminU.collection('candidates').doc('cand_1_ok').update({ electionId: 'elect_other' }));
-    await assertFails(adminU.collection('candidates').doc('cand_1_ok').update({ positionId: 'other_pos' }));
-    await assertSucceeds(adminU.collection('candidates').doc('cand_1_ok').update({ status: 'inactive' }));
+    await assertSucceeds(superU.collection('candidates').doc('cand_1_ok').update({ name: 'Alma Renamed' }));
+    await assertFails(adminU.collection('candidates').doc('cand_1_ok').update({ name: 'Alma Hacked' }));
+    await assertFails(superU.collection('candidates').doc('cand_1_ok').update({ electionId: 'elect_other' }));
+    await assertFails(superU.collection('candidates').doc('cand_1_ok').update({ positionId: 'other_pos' }));
+    await assertSucceeds(superU.collection('candidates').doc('cand_1_ok').update({ status: 'inactive' }));
   });
 
   await test('X3 positions binding keys are immutable on update', async () => {
-    await assertSucceeds(adminU.collection('positions').doc('newpos').update({ name: 'Treasurer II' }));
-    await assertFails(adminU.collection('positions').doc('newpos').update({ electionId: 'elect_other' }));
+    await assertSucceeds(superU.collection('positions').doc('newpos').update({ name: 'Treasurer II' }));
+    await assertFails(adminU.collection('positions').doc('newpos').update({ name: 'Treasurer Hacked' }));
+    await assertFails(superU.collection('positions').doc('newpos').update({ electionId: 'elect_other' }));
   });
 
   await test('X4 settings: only resultsVisibility is writable', async () => {
@@ -336,14 +345,17 @@ async function main() {
     await assertFails(voterA.collection('votes').doc(eId).get());
   });
 
-  await test('X6 studentList is admin only and validated', async () => {
+  await test('X6 studentList reads are admin, writes are superadmin only', async () => {
     await assertFails(anon.collection('studentList').doc('ADM001').get());
     await assertFails(voterA.collection('studentList').doc('ADM001').get());
     await assertFails(voterA.collection('studentList').doc('ADM001').set({ admNumber: 'ADM001', fullName: 'Test', used: false }));
-    await assertSucceeds(adminU.collection('studentList').doc('ADM001').set({
+    await assertFails(adminU.collection('studentList').doc('ADM001').set({
       admNumber: 'ADM001', fullName: 'Test Student', used: false, registeredUid: null, importedAt: now, importedBy: 'adminU'
     }));
-    await assertFails(adminU.collection('studentList').doc('BAD').set({ admNumber: 'BAD' }));
+    await assertSucceeds(superU.collection('studentList').doc('ADM001').set({
+      admNumber: 'ADM001', fullName: 'Test Student', used: false, registeredUid: null, importedAt: now, importedBy: 'superU'
+    }));
+    await assertFails(superU.collection('studentList').doc('BAD').set({ admNumber: 'BAD' }));
     await assertSucceeds(adminU.collection('studentList').doc('ADM001').get());
   });
 

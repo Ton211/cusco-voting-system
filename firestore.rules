@@ -18,6 +18,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role in ['admin', 'superadmin'];
     }
 
+    // Only the Super Admin may change data. The plain admin role is
+    // view-only (like the viewer roles below): reads stay open, every
+    // write rule uses isSuperAdmin().
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'superadmin';
+    }
+
     // View-only staff (director, principal, dean, registrar). They may
     // read the data shown on dashboard / candidates / election / live /
     // results / reports, but every write rule below still requires
@@ -103,9 +110,9 @@ service cloud.firestore {
 
     match /positions/{positionId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin() && validPositionWrite(true);
-      allow update: if isAdmin() && validPositionWrite(false);
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() && validPositionWrite(true);
+      allow update: if isSuperAdmin() && validPositionWrite(false);
+      allow delete: if isSuperAdmin();
     }
 
     // ------------------------------------------------------------------
@@ -138,9 +145,9 @@ service cloud.firestore {
 
     match /candidates/{candidateId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin() && validCandidateWrite(true);
-      allow update: if isAdmin() && validCandidateWrite(false);
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() && validCandidateWrite(true);
+      allow update: if isSuperAdmin() && validCandidateWrite(false);
+      allow delete: if isSuperAdmin();
     }
 
     // ------------------------------------------------------------------
@@ -179,7 +186,7 @@ service cloud.firestore {
 
     match /settings/resultsVisibility {
       allow get: if isSignedIn();
-      allow write: if isAdmin() && validSettingsWrite();
+      allow write: if isSuperAdmin() && validSettingsWrite();
     }
 
     // Staff username alias (e.g. CUSCO -> staff email). Written only by
@@ -205,9 +212,9 @@ service cloud.firestore {
 
     match /studentList/{admId} {
       allow read: if isAdmin();
-      allow create: if isAdmin() && validStudentWrite();
-      allow update: if isAdmin() && validStudentWrite();
-      allow delete: if isAdmin();
+      allow create: if isSuperAdmin() && validStudentWrite();
+      allow update: if isSuperAdmin() && validStudentWrite();
+      allow delete: if isSuperAdmin();
     }
 
     // ------------------------------------------------------------------

@@ -65,21 +65,25 @@
       $count.textContent = 'Showing ' + rows.length + ' registered voter' + (rows.length === 1 ? '' : 's') + '. List refreshes automatically.';
     }
 
+    const readOnly = window.isReadOnly();
     $tbody.innerHTML = rows
       .sort(function (a, b) { return (a.createdAt ? b.createdAt.seconds - a.createdAt.seconds : 0) || (a.fullName || '').localeCompare(b.fullName || ''); })
       .map(function (u) {
+        const actionCell = readOnly
+          ? '<button class="btn btn-ghost btn-sm" data-action="view" data-uid="' + esc(u.uid) + '">View</button>'
+          : '<div class="row-actions">' +
+            '<button class="btn btn-ghost btn-sm" data-action="view" data-uid="' + esc(u.uid) + '">View</button>' +
+            '<button class="btn btn-outline btn-sm" data-action="edit" data-uid="' + esc(u.uid) + '">Edit</button>' +
+            '<button class="btn btn-ghost btn-sm" data-action="reset" data-uid="' + esc(u.uid) + '">Reset</button>' +
+            '<button class="btn btn-sm ' + (u.status === 'inactive' ? 'btn-success-inline' : 'btn-danger-inline') + '" data-action="toggle" data-uid="' + esc(u.uid) + '">' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '</button>' +
+            '</div>';
         return (
           '<tr>' +
           '<td><strong>' + esc(u.voterId || 'Not set') + '</strong></td>' +
           '<td>' + esc(u.fullName) + '</td>' +
           '<td>' + passwordBadge(u) + '</td>' +
           '<td>' + roleBadge(u.role) + ' ' + statusBadge(u) + '</td>' +
-          '<td><div class="row-actions">' +
-          '<button class="btn btn-ghost btn-sm" data-action="view" data-uid="' + esc(u.uid) + '">View</button>' +
-          '<button class="btn btn-outline btn-sm" data-action="edit" data-uid="' + esc(u.uid) + '">Edit</button>' +
-          '<button class="btn btn-ghost btn-sm" data-action="reset" data-uid="' + esc(u.uid) + '">Reset</button>' +
-          '<button class="btn btn-sm ' + (u.status === 'inactive' ? 'btn-success-inline' : 'btn-danger-inline') + '" data-action="toggle" data-uid="' + esc(u.uid) + '">' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '</button>' +
-          '</div></td>' +
+          '<td>' + actionCell + '</td>' +
           '</tr>'
         );
       })
@@ -428,6 +432,8 @@
   });
 
   window.authPromise.then(function (a) {
+    // Read-only staff can view voters but cannot register or change them.
+    window.hideForReadOnly('#openRegisterBtn');
     // Only super admins may grant the admin (or super admin) role.
     if (a.role === 'superadmin') {
       document.getElementById('regRoleWrap').classList.remove('hidden');

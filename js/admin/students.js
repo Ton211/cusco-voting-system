@@ -28,15 +28,19 @@
     });
     if ($empty) $empty.classList.toggle('hidden', rows.length > 0);
     if (!$body) return;
+    const readOnly = window.isReadOnly();
     $body.innerHTML = rows
       .sort(function (a, b) { return String(a.admNumber || '').localeCompare(String(b.admNumber || '')); })
       .map(function (s) {
         const state = s.used ? '<span class="badge active">Registered</span>' : '<span class="badge pending">Not yet registered</span>';
+        const actionCell = readOnly
+          ? '<span class="muted">—</span>'
+          : '<div class="row-actions">' +
+            '<button class="btn btn-outline btn-sm" data-action="edit" data-adm="' + esc(s.admNumber || '') + '">Edit</button>' +
+            '<button class="btn btn-ghost btn-sm" data-action="del" data-adm="' + esc(s.admNumber || '') + '">Delete</button>' +
+            '</div>';
         return '<tr><td><strong>' + esc(s.admNumber || '') + '</strong></td><td>' + esc(s.fullName || '') + '</td><td>' + state + '</td>' +
-          '<td><div class="row-actions">' +
-          '<button class="btn btn-outline btn-sm" data-action="edit" data-adm="' + esc(s.admNumber || '') + '">Edit</button>' +
-          '<button class="btn btn-ghost btn-sm" data-action="del" data-adm="' + esc(s.admNumber || '') + '">Delete</button>' +
-          '</div></td></tr>';
+          '<td>' + actionCell + '</td></tr>';
       })
       .join('');
   }
@@ -208,6 +212,9 @@
   });
 
   window.authPromise.then(function () {
+    // Read-only staff can see the list but cannot add, import or edit.
+    window.hideForReadOnly('#openAddBtn');
+    window.hideForReadOnly('#openImportBtn');
     return load().then(function () { liveCollections([DB.collection('studentList')], load); });
   }).catch(function (err) {
     toast('Could not load students: ' + friendlyError(err), 'error');

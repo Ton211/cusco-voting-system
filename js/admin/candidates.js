@@ -80,7 +80,7 @@
   }
 
   function render(q) {
-    const viewer = window.isViewer();
+    const viewer = window.isReadOnly();
     const filtered = allCandidates.filter(function (c) {
       if (!q) return true;
       const hay = (c.name + ' ' + electionName(c.electionId) + ' ' + positionName(c.positionId)).toLowerCase();
@@ -307,8 +307,8 @@
   window.authPromise.then(function () {
     addBtnStyles();
     // View-only staff can see candidates but cannot register or edit.
-    window.hideForViewer('#openRegisterBtn');
-    window.hideForViewer('#emptyRegisterBtn');
+    window.hideForReadOnly('#openRegisterBtn');
+    window.hideForReadOnly('#emptyRegisterBtn');
     return loadMeta();
   }).then(function () {
     render('');

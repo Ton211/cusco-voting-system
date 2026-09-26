@@ -203,7 +203,7 @@
 
   window.authPromise.then(async function () {
     // View-only staff can see results but cannot change visibility.
-    window.hideForViewer('#visibilityToggleWrap');
+    window.hideForReadOnly('#visibilityToggleWrap');
     await loadSelect();
     // Real-time: votes, candidates, or settings changes re-render at once.
     liveCollections(

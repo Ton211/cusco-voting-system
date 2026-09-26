@@ -26,6 +26,7 @@
       return (p.name + ' ' + electionName(p.electionId)).toLowerCase().includes(q);
     });
 
+    const readOnly = window.isReadOnly();
     $empty.classList.toggle('hidden', rows.length > 0);
     $tbody.innerHTML = rows
       .sort(function (a, b) {
@@ -33,14 +34,17 @@
         return (a.order || 0) - (b.order || 0);
       })
       .map(function (p) {
+        const actionCell = readOnly
+          ? '<span class="muted">—</span>'
+          : '<div class="row-actions">' +
+            '<button class="btn btn-outline btn-sm" data-action="edit" data-id="' + esc(p.id) + '">Edit</button>' +
+            '<button class="btn btn-ghost btn-sm" data-action="del" data-id="' + esc(p.id) + '">Delete</button>' +
+            '</div>';
         return '<tr>' +
           '<td><strong>' + esc(p.name) + '</strong></td>' +
           '<td>' + esc(electionName(p.electionId)) + '</td>' +
           '<td>' + esc(p.order || 0) + '</td>' +
-          '<td><div class="row-actions">' +
-          '<button class="btn btn-outline btn-sm" data-action="edit" data-id="' + esc(p.id) + '">Edit</button>' +
-          '<button class="btn btn-ghost btn-sm" data-action="del" data-id="' + esc(p.id) + '">Delete</button>' +
-          '</div></td>' +
+          '<td>' + actionCell + '</td>' +
           '</tr>';
       })
       .join('');
@@ -145,6 +149,8 @@
   $modal.addEventListener('click', function (e) { if (e.target === $modal) closeModal('positionModal'); });
 
   window.authPromise.then(function () {
+    // Read-only staff can see positions but cannot add or edit them.
+    window.hideForReadOnly('#openAddBtn');
     return load().then(function () { liveCollections([DB.collection('elections'), DB.collection('positions')], load); });
   }).catch(function (err) {
     toast('Could not load positions: ' + friendlyError(err), 'error');

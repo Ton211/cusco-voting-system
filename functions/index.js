@@ -184,22 +184,17 @@ async function generateVoterId() {
 
 // ---------------------------------------------------------------------
 //  registerUser
-//  Admin registers a voter   (role = 'voter' or 'admin')
-//  Super Admin may also create admins / super admins
+//  Only a Super Admin may create accounts. The plain admin role is
+//  view-only, as are director / principal / dean / registrar.
 // ---------------------------------------------------------------------
 exports.registerUser = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('registerUser', context.auth ? context.auth.uid : clientIp(context));
-  const callerRole = requireRole(context, ['admin', 'superadmin']);
+  requireSuperAdmin(context);
 
   const role = data.role || 'voter';
   if (!ROLES.includes(role)) {
     throw HttpsError('invalid-argument', 'Invalid role.');
-  }
-
-  // A plain Admin may only create voters.
-  if (role !== 'voter' && callerRole !== 'superadmin') {
-    throw HttpsError('permission-denied', 'Only a Super Admin can create admin accounts.');
   }
 
   const fullName = String(data.fullName || '').trim();
@@ -289,23 +284,18 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
 
 // ---------------------------------------------------------------------
 //  updateUser
-//  Admin updates a voter/admin profile and can activate/deactivate
+//  Only a Super Admin may update profiles or activate/deactivate.
 // ---------------------------------------------------------------------
 exports.updateUser = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('updateUser', context.auth ? context.auth.uid : clientIp(context));
-  const callerRole = requireRole(context, ['admin', 'superadmin']);
+  requireSuperAdmin(context);
   const uid = String(data.uid || '');
   if (!uid) throw HttpsError('invalid-argument', 'User id is required.');
 
   const userDoc = await db.collection('users').doc(uid).get();
   if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
   const target = userDoc.data();
-
-  // Only a Super Admin may modify a Super Admin.
-  if (target.role === 'superadmin' && callerRole !== 'superadmin') {
-    throw HttpsError('permission-denied', 'Only a Super Admin may modify another Super Admin.');
-  }
 
   const updates = {};
 
@@ -351,13 +341,12 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
 
 // ---------------------------------------------------------------------
 //  resetPassword
-//  A plain Admin must not be able to reset a Super Admin's password
-//  (that would be a silent account-takeover path).
+//  Only a Super Admin may reset passwords.
 // ---------------------------------------------------------------------
 exports.resetPassword = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('resetPassword', context.auth ? context.auth.uid : clientIp(context));
-  const callerRole = requireRole(context, ['admin', 'superadmin']);
+  requireSuperAdmin(context);
   const uid = String(data.uid || '');
   let password = String(data.newPassword || '');
   if (!uid) throw HttpsError('invalid-argument', 'User id is required.');
@@ -365,12 +354,6 @@ exports.resetPassword = functions.https.onCall(async (data, context) => {
   const userDoc = await db.collection('users').doc(uid).get();
   if (!userDoc.exists) throw HttpsError('not-found', 'User not found.');
   const target = userDoc.data();
-
-  // Super Admins may reset any user's password.
-  // A plain Admin may NOT reset a Super Admin's password (prevents account takeover escalation).
-  if (target.role === 'superadmin' && callerRole !== 'superadmin') {
-    throw HttpsError('permission-denied', 'Only a Super Admin may reset another Super Admin\'s password.');
-  }
 
   // Blank password: restore the voter's adm number as a temporary
   // password. The voter must set their own password at next sign in
@@ -442,13 +425,13 @@ exports.changeOwnPassword = functions.https.onCall(async (data, context) => {
 
 // ---------------------------------------------------------------------
 //  importStudents
-//  Admin uploads the official student list (adm + full name). Students
-//  can only self-register when their adm number is on this list.
+//  Super Admin uploads the official student list (adm + full name).
+//  Students can only self-register when their adm number is on this list.
 // ---------------------------------------------------------------------
 exports.importStudents = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('importStudents', context.auth ? context.auth.uid : clientIp(context));
-  requireAdmin(context);
+  requireSuperAdmin(context);
 
   const list = Array.isArray(data.students) ? data.students : null;
   if (!list || !list.length) throw HttpsError('invalid-argument', 'No students supplied.');
@@ -503,7 +486,7 @@ exports.importStudents = functions.https.onCall(async (data, context) => {
 exports.updateStudent = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('updateStudent', context.auth ? context.auth.uid : clientIp(context));
-  requireAdmin(context);
+  requireSuperAdmin(context);
 
   const adm = normalizeAdm(data.admNumber || '');
   const fullName = String(data.fullName || '').trim();
@@ -520,7 +503,7 @@ exports.updateStudent = functions.https.onCall(async (data, context) => {
 exports.deleteStudent = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('deleteStudent', context.auth ? context.auth.uid : clientIp(context));
-  requireAdmin(context);
+  requireSuperAdmin(context);
 
   const adm = normalizeAdm(data.admNumber || '');
   if (!adm) throw HttpsError('invalid-argument', 'Adm number is required.');
@@ -735,7 +718,7 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
 exports.saveElection = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('saveElection', context.auth ? context.auth.uid : clientIp(context));
-  requireAdmin(context);
+  requireSuperAdmin(context);
 
   // Update path: merge incoming fields over the stored election so
   // partial updates (e.g. Open/Close sending only a status) work.
@@ -814,14 +797,14 @@ function tsMillis(t) {
 }
 
 // ---------------------------------------------------------------------
-//  deleteElection (admin only)
+//  deleteElection (superadmin only)
 //  Removes the election plus its positions, candidates and aggregate
 //  votes doc. Active elections cannot be deleted: close first.
 // ---------------------------------------------------------------------
 exports.deleteElection = functions.https.onCall(async (data, context) => {
   verifyAppCheck(context);
   rateLimit('deleteElection', context.auth ? context.auth.uid : clientIp(context));
-  requireAdmin(context);
+  requireSuperAdmin(context);
 
   const id = String(data.id || '');
   if (!id) throw HttpsError('invalid-argument', 'Election id is required.');

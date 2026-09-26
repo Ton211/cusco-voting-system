@@ -108,7 +108,7 @@
   }
 
   function renderList(rows) {
-    const viewer = window.isViewer();
+    const viewer = window.isReadOnly();
     if (!rows.length) {
       $list.innerHTML =
         '<div class="empty">No elections yet.</div>' +
@@ -168,7 +168,7 @@
 
   window.authPromise.then(function () {
     // View-only staff see numbers only: no quick actions, no open/close.
-    window.hideForViewer('#nextStepsCard');
+    window.hideForReadOnly('#nextStepsCard');
     load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load); }).catch(function (err) {
       $list.innerHTML = '<p class="muted">Could not load dashboard data.</p>';
       toast('Could not load dashboard: ' + friendlyError(err), 'error');
