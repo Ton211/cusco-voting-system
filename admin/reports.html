@@ -54,19 +54,20 @@
       </div>
 
       <div id="printHeader" class="print-only">
-        <div class="print-header-top">
-          <img src="/images/cusco_logo.png" alt="CUSCO crest" class="print-logo">
-          <div class="print-header-text">
-            <h2>CAMBRIDGE UNIVERSAL COLLEGE</h2>
-            <p>P.O. Box 6679 &ndash; 30100 ELDORET &bull; Eldoret, Kenya</p>
-            <p class="muted">Between Eldoret Hospital and AIC Fellowship before Moi Teaching and Referral Hospital in Eldoret Town</p>
-            <p>Tel: 0708 411 765 &bull; Email: cambridgeuc@gmail.com &bull; Web: www.cambridge.co.ke</p>
-          </div>
+        <div class="print-header-docx">
+          <img src="/images/cusco_logo.png" alt="CUSCO crest" class="print-logo-docx">
+          <div class="print-college">CAMBRIDGE UNIVERSAL COLLEGE</div>
+          <div class="print-addr">P.O. Box 6679 &ndash; 30100 ELDORET</div>
+          <div class="print-addr">Eldoret, Kenya</div>
+          <div class="print-loc">BETWEEN ELDORET HOSPITAL AND AIC FELLOWSHIP BEFORE MOI TEACHING AND REFERRAL HOSPITAL IN ELDORET TOWN</div>
+          <div class="print-contact"><span>Tel:&nbsp;&nbsp;</span><strong>0708 411 765</strong></div>
+          <div class="print-contact">Email:&nbsp;&nbsp;&nbsp;&nbsp;cambridgeuc@gmail.com</div>
+          <div class="print-contact">WEB:&nbsp;&nbsp;www.cambridge.co.ke</div>
         </div>
         <hr>
         <div class="print-report-title">
           <h3>Election Results Report</h3>
-          <p><strong id="printElectionName">—</strong> &bull; Printed: <span id="printDate">—</span></p>
+          <p><strong id="printElectionName">—</strong> &bull; <span id="printElectionPeriod">—</span></p>
         </div>
       </div>
 
@@ -78,19 +79,24 @@
 
   <style>
     .print-only { display: none; }
-    .print-header-top { display: flex; gap: 14px; align-items: center; }
-    .print-logo { width: 72px; height: 72px; object-fit: contain; }
-    .print-header-text h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.5px; }
-    .print-header-text p { margin: 1px 0; font-size: 12px; }
-    .print-report-title { text-align: center; margin: 10px 0 14px; }
+    .print-header-docx { text-align: center; font-family: "Bookman Old Style", "Times New Roman", serif; color: #002060; }
+    .print-logo-docx { width: 90px; height: 90px; object-fit: contain; margin-bottom: 2px; }
+    .print-college { font-family: "Bookman Old Style", serif; font-weight: bold; font-size: 18px; color: #C00000; letter-spacing: 0.5px; margin: 2px 0; }
+    .print-addr { font-weight: bold; font-size: 11px; color: #002060; }
+    .print-loc { font-weight: bold; font-size: 10px; color: #002060; margin: 2px 0; }
+    .print-contact { font-size: 12px; color: #002060; }
+    .print-contact strong { font-size: 15px; }
+    .print-report-title { text-align: center; margin: 10px 0 14px; font-family: inherit; }
     .print-report-title h3 { margin: 0 0 2px; font-size: 17px; text-transform: uppercase; letter-spacing: 0.5px; }
     .print-report-title p { margin: 0; font-size: 13px; }
+    @page { size: A4; margin: 0; }
     @media print {
       .sidebar, .page-head, .no-print { display: none !important; }
       .print-only { display: block !important; }
       .admin-shell { display: block; }
       .content { padding: 0; }
-      body { background: #fff; }
+      body { background: #fff; padding: 12mm 10mm; }
+      a { text-decoration: none; color: inherit; }
       .card, .stat { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
     }
     .kv { display:grid; grid-template-columns: 190px 1fr; gap:4px 12px; font-size:14px; }
