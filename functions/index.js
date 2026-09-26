@@ -8,7 +8,9 @@
 //    - count one vote per voter per election atomically (transaction)
 //    - keep ballots separate from voter identity
 //
-//  Region: africa-south1 (Johannesburg) for low latency in Kenya.
+//  Region: default (us-central1). africa-south1 was attempted but the
+//  project uses 1st-gen functions, which Google does not offer there —
+//  only 2nd-gen runs in Africa (needs an SDK migration, see below).
 //  Keep this in sync with FIREBASE_FUNCTIONS_REGION in
 //  js/firebase-config.js if you change it.
 // =====================================================================
@@ -17,8 +19,8 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 
-// All functions (callables + scheduled) run in Africa.
-const fn = functions.region('africa-south1');
+// 1st-gen default region (us-central1).
+const fn = functions.region('us-central1');
 
 admin.initializeApp();
 

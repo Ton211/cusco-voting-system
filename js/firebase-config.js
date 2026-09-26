@@ -11,8 +11,8 @@ const firebaseConfig = {
 };
 
 // Keep app.functions() region in sync with the Cloud Function region
-// (functions/index.js pins everything to africa-south1).
-const FIREBASE_FUNCTIONS_REGION = "africa-south1";
+// (functions/index.js uses the same default region).
+const FIREBASE_FUNCTIONS_REGION = "us-central1";
 
 // ---------------------------------------------------------------------
 //  Firebase App Check (optional but strongly recommended).
