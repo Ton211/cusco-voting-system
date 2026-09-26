@@ -37,8 +37,23 @@ function isPreviewHost(host) {
   return host.endsWith('.pages.dev');
 }
 
-function withSecurityHeaders(response) {
+function withCacheHeaders(headers, pathname) {
+  // The app ships unversioned /js/*.js and /admin/*.html files, and the
+  // auth guard redirects by role: a stale cached guard after an update
+  // makes logins bounce between pages (endless refresh blink). Force
+  // revalidation so every navigation picks up the latest deploy while
+  // still allowing cheap 304 responses when nothing changed.
+  if (headers.has('Cache-Control')) return;
+  if (pathname.endsWith('.html') || pathname === '/' || !pathname.includes('.')) {
+    headers.set('Cache-Control', 'no-store, must-revalidate');
+  } else if (/\.(js|css)$/.test(pathname)) {
+    headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  }
+}
+
+function withSecurityHeaders(response, pathname) {
   const headers = new Headers(response.headers);
+  withCacheHeaders(headers, pathname || '');
   if (!headers.has('X-Content-Type-Options')) headers.set('X-Content-Type-Options', 'nosniff');
   if (!headers.has('X-Frame-Options')) headers.set('X-Frame-Options', 'DENY');
   if (!headers.has('Referrer-Policy')) headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -88,7 +103,8 @@ export default {
           new Response('Not found', {
             status: 404,
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
+          }),
+          path
         );
       }
     }
@@ -102,9 +118,10 @@ export default {
         new Response('Not found', {
           status: 404,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        })
+        }),
+        path
       );
     }
-    return withSecurityHeaders(response);
+    return withSecurityHeaders(response, path);
   },
 };

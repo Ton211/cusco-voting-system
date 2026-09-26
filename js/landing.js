@@ -39,7 +39,7 @@
     window.authPromise.then(function (a) {
       if (!a || !a.user) return;
       if (a.role === 'voter') location.replace('/voter/dashboard.html');
-      else if (a.role === 'admin' || a.role === 'superadmin') location.replace('/admin/dashboard.html');
+      else if (a.role === 'admin' || a.role === 'superadmin' || window.isViewerRole(a.role)) location.replace('/admin/dashboard.html');
     }).catch(function () {});
   }
 
