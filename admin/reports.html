@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card no-print" id="reportControls">
         <div class="form-grid" style="grid-template-columns:1fr; align-items:end;">
           <div class="form-group">
             <label for="reportElection">Election</label>
@@ -61,7 +61,7 @@
 
   <style>
     @media print {
-      .sidebar, .page-head .no-print, .card:first-of-type, .report-filters { display: none !important; }
+      .sidebar, .page-head, .no-print { display: none !important; }
       .admin-shell { display: block; }
       .content { padding: 0; }
       body { background: #fff; }
