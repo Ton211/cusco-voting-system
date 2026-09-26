@@ -163,6 +163,16 @@ function callFriendly(err) {
 //
 //  Returns stop(); also stops automatically on page unload.
 // ---------------------------------------------------------------
+// Last user interaction (any click / key / touch). Live re-renders are
+// deferred briefly after interaction so clicks never land on a DOM that
+// is being rebuilt underneath them — refreshes stay silent/invisible.
+let lastInteractAt = 0;
+if (typeof document !== 'undefined') {
+  ['click', 'keydown', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, function () { lastInteractAt = Date.now(); }, { passive: true, capture: true });
+  });
+}
+
 function liveCollections(refs, reload, opts) {
   const o = opts || {};
   let busy = false;
@@ -190,6 +200,9 @@ function liveCollections(refs, reload, opts) {
   function schedule() {
     if (stopped) return;
     if (busy || guardsBusy()) { pending = true; return; }
+    // User just clicked / typed / tapped: hold the refresh until idle so
+    // the DOM is never rebuilt mid-interaction (no swallowed clicks).
+    if (Date.now() - lastInteractAt < 1500) { pending = true; return; }
     if (debounce) return; // coalesce rapid bursts into one refresh
     debounce = setTimeout(function () {
       debounce = null;
@@ -210,10 +223,11 @@ function liveCollections(refs, reload, opts) {
   });
 
   // Safety net every 2s: apply anything deferred while a dialog was
-  // open or the user was typing, and catch any missed event.
+  // open, the user was typing, or a click just happened — and catch any
+  // missed event. Refreshes only land once the user has been idle ~1.5s.
   const timer = setInterval(function () {
     if (stopped || document.hidden) return;
-    if (pending && !guardsBusy()) { pending = false; run(); }
+    if (pending && !guardsBusy() && Date.now() - lastInteractAt >= 1500) { pending = false; run(); }
   }, 2000);
 
   function stop() {

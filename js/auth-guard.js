@@ -42,6 +42,25 @@ window.isViewerRole = function (role) {
   }
 
   function redirect(url) {
+    // Loop breaker: if the browser bounces between pages several times
+    // in a few seconds (almost always a stale cached copy of this file
+    // fighting the new one), stop redirecting and say so instead of
+    // blinking forever.
+    try {
+      const now = Date.now();
+      const log = JSON.parse(sessionStorage.getItem('cusco-rd') || '[]')
+        .filter(function (t) { return now - t < 8000; });
+      log.push(now);
+      sessionStorage.setItem('cusco-rd', JSON.stringify(log));
+      if (log.length > 4) {
+        sessionStorage.removeItem('cusco-rd');
+        document.body.classList.remove('auth-hidden');
+        document.body.innerHTML = '<main class="content"><div class="alert alert-error" style="margin:48px auto;max-width:540px;">' +
+          '<strong>Page keeps reloading.</strong><br>Your browser is holding old files. ' +
+          'Press <strong>Ctrl+Shift+R</strong> (hard refresh), then sign in again.</div></main>';
+        return;
+      }
+    } catch (e) {}
     location.replace(url);
   }
 

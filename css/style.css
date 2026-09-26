@@ -345,6 +345,7 @@ table.data tbody tr:hover { background: #f5f8fd; }
 .alert-info { background: var(--primary-soft); color: var(--primary-ink); border-color: #c3d2f5; }
 .alert-success { background: var(--success-soft); color: var(--success); border-color: #bfe6c9; }
 .alert-warn { background: var(--warn-soft); color: var(--warn); border-color: #f0d9ac; }
+.alert-error { background: var(--danger-soft); color: var(--danger); border-color: #f3c1c1; }
 
 .muted { color: var(--muted); }
 .mt-16 { margin-top: 16px; }
