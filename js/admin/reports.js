@@ -136,6 +136,10 @@
       $meta.textContent = '';
       $meta.style.display = 'none';
     }
+    var $printName = document.getElementById('printElectionName');
+    var $printDate = document.getElementById('printDate');
+    if ($printName) $printName.textContent = election.name || electionId;
+    if ($printDate) $printDate.textContent = new Date().toLocaleString('en-GB');
     render();
   }
 
@@ -303,6 +307,10 @@
       cache = null; selectedId = null;
       $body.innerHTML = '<div class="empty">No report yet — pick an election.</div>';
       if ($meta) { $meta.textContent = 'Select an election above to build the report.'; $meta.style.display = ''; }
+      var $pn = document.getElementById('printElectionName');
+      var $pd = document.getElementById('printDate');
+      if ($pn) $pn.textContent = '—';
+      if ($pd) $pd.textContent = '—';
       return;
     }
     try {

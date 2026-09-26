@@ -53,6 +53,23 @@
         <p class="muted text-sm" id="reportMeta">Select an election above to build the report.</p>
       </div>
 
+      <div id="printHeader" class="print-only">
+        <div class="print-header-top">
+          <img src="/images/cusco_logo.png" alt="CUSCO crest" class="print-logo">
+          <div class="print-header-text">
+            <h2>CAMBRIDGE UNIVERSAL COLLEGE</h2>
+            <p>P.O. Box 6679 &ndash; 30100 ELDORET &bull; Eldoret, Kenya</p>
+            <p class="muted">Between Eldoret Hospital and AIC Fellowship before Moi Teaching and Referral Hospital in Eldoret Town</p>
+            <p>Tel: 0708 411 765 &bull; Email: cambridgeuc@gmail.com &bull; Web: www.cambridge.co.ke</p>
+          </div>
+        </div>
+        <hr>
+        <div class="print-report-title">
+          <h3>Election Results Report</h3>
+          <p><strong id="printElectionName">—</strong> &bull; Printed: <span id="printDate">—</span></p>
+        </div>
+      </div>
+
       <div id="reportBody">
         <div class="empty">No report yet — pick an election.</div>
       </div>
@@ -60,8 +77,17 @@
   </div>
 
   <style>
+    .print-only { display: none; }
+    .print-header-top { display: flex; gap: 14px; align-items: center; }
+    .print-logo { width: 72px; height: 72px; object-fit: contain; }
+    .print-header-text h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.5px; }
+    .print-header-text p { margin: 1px 0; font-size: 12px; }
+    .print-report-title { text-align: center; margin: 10px 0 14px; }
+    .print-report-title h3 { margin: 0 0 2px; font-size: 17px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .print-report-title p { margin: 0; font-size: 13px; }
     @media print {
       .sidebar, .page-head, .no-print { display: none !important; }
+      .print-only { display: block !important; }
       .admin-shell { display: block; }
       .content { padding: 0; }
       body { background: #fff; }
