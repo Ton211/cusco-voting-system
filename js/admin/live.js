@@ -88,7 +88,7 @@
 
   function renderBlank() {
     countdownTarget = 0;
-    $status.textContent = 'No open election. Live graphs appear here once voting opens.';
+    $status.textContent = '';
     $badge.innerHTML = '<span class="badge draft">Offline</span>';
     $grid.innerHTML = '';
     $blank.classList.remove('hidden');
