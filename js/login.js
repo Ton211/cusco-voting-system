@@ -131,23 +131,11 @@
   });
 
   if (forgotLink) {
-  forgotLink.addEventListener('click', async function (e) {
+  // Students cannot self-reset: direct them to the admin desk with a
+  // side pop-out notice instead of an inline form error.
+  forgotLink.addEventListener('click', function (e) {
     e.preventDefault();
-    const username = emailInput.value.trim();
-    if (!username) {
-      showError('Enter your adm number first, then press "Forgot password?".');
-      return;
-    }
-    if (username.indexOf('@') === -1) {
-      showError('Student accounts use adm numbers. Ask your admin to reset your password to your adm number.');
-      return;
-    }
-    try {
-      await AUTH.sendPasswordResetEmail(username.toLowerCase());
-      toast('Password reset link sent to ' + username + '.', 'success');
-    } catch (err) {
-      showError(friendlyError(err));
-    }
+    toast('Kindly visit the admin desk to reset your password.', 'info');
   });
   }
 

@@ -114,17 +114,11 @@
 
   const forgot = document.getElementById('landingForgot');
   if (forgot) {
+    // Students cannot self-reset: direct them to the admin desk with a
+    // side pop-out notice instead of an inline form error.
     forgot.addEventListener('click', function (e) {
       e.preventDefault();
-      const username = String(admInput.value || '').trim();
-      if (!username) { showError('Enter your adm number first.'); return; }
-      if (username.indexOf('@') === -1) {
-        showError('Student accounts use adm numbers. Ask your admin to reset your password to your adm number.');
-        return;
-      }
-      AUTH.sendPasswordResetEmail(username.toLowerCase()).then(function () {
-        toast('Password reset link sent.', 'success');
-      }).catch(function (err) { showError(friendlyError(err)); });
+      toast('Kindly visit the admin desk to reset your password.', 'info');
     });
   }
 
