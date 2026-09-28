@@ -87,6 +87,56 @@ window.hideForReadOnly = function (sel) {
     }
   });
 
+  // Mobile hamburger drawer (phones/tablets). The toggle button, close
+  // button and backdrop are injected here, so without JS the sidebar
+  // simply keeps its scrollable top nav row (see style.css).
+  (function initDrawer() {
+    var sidebar = document.querySelector('.sidebar');
+    var nav = sidebar && sidebar.querySelector('nav');
+    if (!sidebar || !nav) return;
+    document.body.classList.add('has-drawer');
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'nav-toggle';
+    toggle.setAttribute('aria-label', 'Open menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML = '&#9776;';
+    sidebar.insertBefore(toggle, sidebar.firstChild);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'drawer-close';
+    closeBtn.setAttribute('aria-label', 'Close menu');
+    closeBtn.textContent = '\u00d7';
+    nav.insertBefore(closeBtn, nav.firstChild);
+
+    var user = sidebar.querySelector('.sidebar-user');
+    if (user) nav.appendChild(user);
+
+    var scrim = document.createElement('div');
+    scrim.className = 'drawer-scrim';
+    document.body.appendChild(scrim);
+
+    function setOpen(open) {
+      document.body.classList.toggle('drawer-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      try { document.body.style.overflow = open ? 'hidden' : ''; } catch (e) {}
+    }
+    toggle.addEventListener('click', function () {
+      setOpen(!document.body.classList.contains('drawer-open'));
+    });
+    closeBtn.addEventListener('click', function () { setOpen(false); });
+    scrim.addEventListener('click', function () { setOpen(false); });
+    nav.addEventListener('click', function (e) {
+      if (e.target.closest('a')) setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  })();
+
   // Highlight the current page in the sidebar.
   const links = qsa('.sidebar nav a');
   const here = location.pathname;
