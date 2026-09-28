@@ -5,7 +5,6 @@
   // Voter module menu: mounted into every voter top bar automatically.
   const VOTER_NAV = [
     ['Dashboard', '/voter/dashboard.html'],
-    ['Vote', '/voter/vote.html'],
     ['Live', '/voter/live.html'],
     ['Results', '/voter/results.html'],
     ['Settings', '/voter/settings.html']
