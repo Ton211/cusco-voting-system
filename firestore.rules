@@ -25,12 +25,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role == 'superadmin';
     }
 
-    // View-only staff (director, principal, dean, registrar). They may
-    // read the data shown on dashboard / candidates / election / live /
-    // results / reports, but every write rule below still requires
+    // View-only staff (director, principal, dean, registrar, staff). They may
+    // read the data shown on dashboard / candidates / positions / election /
+    // live / results / reports, but every write rule below still requires
     // isAdmin(), so they cannot change anything.
     function isStaffViewer() {
-      return isSignedIn() && request.auth.token.role in ['director', 'principal', 'dean', 'registrar'];
+      return isSignedIn() && request.auth.token.role in ['director', 'principal', 'dean', 'registrar', 'staff'];
     }
 
     function isOwnUser(userId) {

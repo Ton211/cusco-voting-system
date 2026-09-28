@@ -1,13 +1,14 @@
 // =====================================================================
-//  Shared admin panel chrome: sidebar name, active nav, logout,
-//  view-only staff limits (director, principal, dean, registrar)
+// Shared admin panel chrome: sidebar name, active nav, logout,
+// view-only staff limits (director, principal, dean, registrar, staff)
 // =====================================================================
 
 // Pages a view-only staff member may open. Everything else in the
-// admin portal (students, voters, positions, users) redirects away.
+// admin portal (students, voters, users) redirects away.
 window.VIEWER_PAGES = [
   '/admin/dashboard.html',
   '/admin/candidates.html',
+  '/admin/positions.html',
   '/admin/elections.html',
   '/admin/live.html',
   '/admin/results.html',
