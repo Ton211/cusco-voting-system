@@ -497,6 +497,21 @@ body[data-page="public"] .auth-page > * {
   .voter-nav a { white-space: nowrap; flex: none; }
   .voter-main { padding: 20px 12px 40px; }
 
+  /* Voter hamburger drawer (phones): same pattern as the admin panel.
+     The top bar becomes hamburger + brand; the nav and the user/logout
+     block live in a slide-in drawer. Without JS the scrollable nav row
+     above stays as the fallback. */
+  body.has-voter-drawer .topbar { flex-wrap: nowrap; align-items: center; }
+  body.has-voter-drawer .nav-toggle { display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid rgba(255, 255, 255, .32); color: #fff; border-radius: 8px; font-size: 19px; line-height: 1; min-width: 44px; min-height: 44px; padding: 8px 11px; flex: none; }
+  body.has-voter-drawer .topbar .brand { flex: 1; min-width: 0; }
+  body.has-voter-drawer .voter-nav { position: fixed; top: 0; left: 0; bottom: 0; width: min(78vw, 300px); z-index: 200; background: var(--sidebar-bg); flex-direction: column; flex-wrap: nowrap; align-items: stretch; overflow-x: visible; overflow-y: auto; padding: 12px 14px 20px; gap: 2px; transform: translateX(-105%); transition: transform .25s ease; border-top-right-radius: 16px; border-bottom-right-radius: 16px; }
+  body.voter-drawer-open .voter-nav { transform: none; box-shadow: 24px 0 48px rgba(0, 0, 0, .35); }
+  body.has-voter-drawer .voter-nav a { white-space: normal; flex: none; padding: 12px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .07); }
+  body.has-voter-drawer .drawer-close { display: block; align-self: flex-end; background: none; border: none; color: #fff; font-size: 28px; line-height: 1; padding: 4px 8px; border-radius: 8px; }
+  body.voter-drawer-open .drawer-scrim { display: block; position: fixed; inset: 0; background: rgba(22, 33, 58, .55); z-index: 190; }
+  body.has-voter-drawer .topbar-right { display: block; border-top: 1px solid rgba(255, 255, 255, .12); margin-top: 12px; padding-top: 12px; }
+  body.has-voter-drawer .topbar-right .btn-logout { width: 100%; margin-top: 10px; padding: 10px 16px; }
+
   /* Admin shell becomes a slim top bar (hamburger + brand). The nav
      lives in a slide-in drawer; the user/logout block moves with it. */
   .admin-shell { grid-template-columns: 1fr; align-content: start; }
