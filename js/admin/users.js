@@ -23,9 +23,13 @@
   const $empty = document.getElementById('emptyState');
   const $search = document.getElementById('searchBox');
 
+  // Legacy view-only roles (staff/user): no longer assignable, but old
+  // accounts still appear here so a superadmin can promote or delete them.
+  var LEGACY_VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
+
   function roleBadge(role) {
     if (role === 'superadmin') return '<span class="badge superadmin">Super Admin</span>';
-    if (window.isViewerRole(role)) {
+    if (LEGACY_VIEWER_ROLES.indexOf(role) !== -1) {
       const label = String(role).charAt(0).toUpperCase() + String(role).slice(1);
       return '<span class="badge scheduled">' + esc(label) + '</span>';
     }
@@ -66,7 +70,7 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user']).get();
+    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user']).get();
     allStaff = snap.docs.map(function (doc) {
       return Object.assign({ uid: doc.id }, doc.data());
     });
@@ -123,8 +127,8 @@
       document.getElementById('resetForm').reset();
       openModal('resetModal');
     } else if (btn.dataset.action === 'role') {
-      // View-only staff can only be promoted to full admin here.
-      const next = window.isViewerRole(u.role) ? 'admin' : (u.role === 'superadmin' ? 'admin' : 'superadmin');
+      // Legacy view-only accounts can only be promoted to full admin here.
+      const next = LEGACY_VIEWER_ROLES.indexOf(u.role) !== -1 ? 'admin' : (u.role === 'superadmin' ? 'admin' : 'superadmin');
       const ok = await confirmDialog({ title: 'Change role', message: 'Set ' + u.fullName + ' as ' + next + '?', confirmText: 'Confirm' });
       if (!ok) return;
       try {
@@ -216,7 +220,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user'])], load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });

@@ -1,6 +1,7 @@
 // =====================================================================
-// Shared admin panel chrome: sidebar name, active nav, logout,
-// view-only staff limits (director, principal, dean, registrar, staff, user)
+// Shared admin panel chrome: sidebar name, active nav, logout.
+// (View-only staff roles were removed; only admin/superadmin use the
+// portal now. The viewer-trim below is kept inert for safety.)
 // =====================================================================
 
 // Pages a view-only staff member may open. Everything else in the

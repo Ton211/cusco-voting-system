@@ -7,7 +7,7 @@
 //  Covers the Phase 13 attack surface matrix against firestore.rules:
 //  server-write-only users/elections, schema-bound positions/candidates,
 //  admin-only votes read, pinned settings — each exercised from
-//  anonymous, voter, admin and view-only staff (director) contexts.
+//  anonymous, voter, admin and legacy view-only (director) contexts.
 // =====================================================================
 
 const {
@@ -30,7 +30,7 @@ let voterA;
 let voterB;
 let adminU; // plain admin: view-only, like viewerD
 let superU; // superadmin: the only writer
-let viewerD; // director: view-only staff
+let viewerD; // director: removed view-only role (reads now denied)
 
 const now = new Date();
 const ELECTION = {
@@ -359,11 +359,14 @@ async function main() {
     await assertSucceeds(adminU.collection('studentList').doc('ADM001').get());
   });
 
-  await test('X8 view-only staff (director) can read dashboards but cannot write', async () => {
-    // Reads needed by dashboard / candidates / election / live / results / reports.
-    await assertSucceeds(viewerD.collection('users').doc('voterA').get());
-    await assertSucceeds(viewerD.collection('users').get());
-    await assertSucceeds(viewerD.collection('votes').doc(eId).get());
+  await test('X8 removed view-only roles (director/staff) lose privileged reads, keep writes blocked', async () => {
+    // Only admin/superadmin use the portal now: legacy viewer roles are
+    // denied the privileged reads (users, votes). Open signed-in reads
+    // (elections, positions, candidates, settings) stay readable but the
+    // auth guard keeps those roles out of every page.
+    await assertFails(viewerD.collection('users').doc('voterA').get());
+    await assertFails(viewerD.collection('users').get());
+    await assertFails(viewerD.collection('votes').doc(eId).get());
     await assertSucceeds(viewerD.collection('positions').doc(eId + '_0').get());
     await assertSucceeds(viewerD.collection('candidates').doc('cand_1_ok').get());
     await assertSucceeds(viewerD.collection('elections').doc(eId).get());

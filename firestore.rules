@@ -25,13 +25,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role == 'superadmin';
     }
 
-    // View-only staff (director, principal, dean, registrar, staff, user).
-    // They may read the data shown on dashboard / candidates / positions / election /
-    // live / results / reports, but every write rule below still requires
-    // isAdmin(), so they cannot change anything.
-    function isStaffViewer() {
-      return isSignedIn() && request.auth.token.role in ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
-    }
+    // Only the Super Admin may change data. The plain admin role is
+    // view-only: reads stay open, every write rule uses isSuperAdmin().
 
     function isOwnUser(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -67,11 +62,11 @@ service cloud.firestore {
     // flag, or hand themselves a receipt.
     // ------------------------------------------------------------------
     match /users/{userId} {
-      allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
+      allow read: if isOwnUser(userId) || isAdmin();
       allow write: if false;
 
       match /receipts/{receiptId} {
-        allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
+        allow read: if isOwnUser(userId) || isAdmin();
         allow write: if false; // only the createVote Cloud Function writes these
       }
     }
@@ -163,7 +158,7 @@ service cloud.firestore {
     }
 
     match /votes/{electionId} {
-      allow read: if isAdmin() || isStaffViewer() || (isVoter() && resultsReleased());
+      allow read: if isAdmin() || (isVoter() && resultsReleased());
       allow write: if false;
     }
 

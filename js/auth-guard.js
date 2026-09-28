@@ -4,9 +4,9 @@
 //  with class "auth-hidden" and only becomes visible once access has
 //  been verified.
 //
-//  data-page="admin"  -> admin/superadmin + view-only staff
-//                       (director, principal, dean, registrar, staff, user;
-//                       per-page limits enforced in admin-common.js)
+//  data-page="admin"  -> admin/superadmin only
+//                       (view-only staff roles removed; per-page limits
+//                       enforced in admin-common.js)
 //  data-page="voter"  -> voter only
 //  data-page="login"        -> shared login
 //  data-page="admin-login"  -> separate ADMIN portal login
@@ -15,10 +15,9 @@
 
 window.__auth = { user: null, role: null };
 
-// View-only staff roles. They use the admin portal but may only see
-// dashboard (read-only, no quick actions), candidates, positions,
-// election, live, results, reports.
-window.VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
+// View-only staff roles (removed: only admin/superadmin use the portal).
+// Kept as an empty list so isViewerRole() stays safe to call everywhere.
+window.VIEWER_ROLES = [];
 window.isViewerRole = function (role) {
   return window.VIEWER_ROLES.indexOf(role) !== -1;
 };
