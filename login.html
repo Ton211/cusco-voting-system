@@ -21,7 +21,7 @@
       <div class="form-group mb-12">
         <label for="email">Adm number</label>
         <input class="input" type="text" id="email" name="username" placeholder="e.g. ADM001" autocomplete="username" required>
-        <p class="auth-note" style="text-align:left;">First login: use your adm number as both username and password.</p>
+        <p class="auth-note" style="text-align:left;">First login: enter your adm number and press Log In, then set your own password below.</p>
       </div>
 
       <div class="form-group mb-12">
@@ -38,19 +38,22 @@
       <a href="#" id="forgotLink" class="link">Forgot password?</a>
     </div>
 
-    <div style="border-top:1px solid var(--border); margin-top:18px; padding-top:16px;">
-      <p class="center text-sm" style="font-weight:700; margin-bottom:8px;">New here? Register as a voter</p>
-      <div id="regBox" class="info-box"></div>
-      <form id="registerForm" novalidate>
+    <div id="firstSetup" class="hidden" style="border-top:1px solid var(--border); margin-top:18px; padding-top:16px;">
+      <p class="center text-sm" style="font-weight:700; margin-bottom:8px;">First time here? Set your password</p>
+      <div id="setupBox" class="info-box"></div>
+      <form id="setupForm" novalidate>
         <div class="form-group mb-12">
-          <label for="regAdm">Adm number</label>
-          <input class="input" type="text" id="regAdm" placeholder="e.g. ADM001" autocomplete="username">
+          <label for="newPassword">New password</label>
+          <input class="input" type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password" minlength="6">
         </div>
-        <button type="submit" id="registerBtn" class="btn btn-outline w-full">
-          Register
+        <div class="form-group mb-12">
+          <label for="confirmPassword">Confirm password</label>
+          <input class="input" type="password" id="confirmPassword" placeholder="Repeat your new password" autocomplete="new-password" minlength="6">
+        </div>
+        <button type="submit" id="setupRegisterBtn" class="btn btn-primary w-full">
+          Register as a voter
         </button>
       </form>
-      <p class="auth-note">Registration works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
     </div>
   </div>
   </main>

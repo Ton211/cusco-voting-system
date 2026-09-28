@@ -28,22 +28,22 @@
         </form>
         <div class="login-links">
           <a href="#" id="landingForgot" class="link">Forgot password?</a>
-          <a href="#" id="showRegisterBtn" class="btn btn-outline btn-sm">Register as a voter</a>
         </div>
-      </div>
 
-      <div class="center-card hidden" id="registerCard" style="margin-top:18px; text-align:left;">
-        <div id="landingRegBox" class="info-box"></div>
-        <form id="landingRegisterForm" novalidate>
-          <div class="form-group mb-12">
-            <label for="landingRegAdm">Adm number</label>
-            <input class="input" type="text" id="landingRegAdm" placeholder="e.g. ADM001" autocomplete="username">
-          </div>
-          <button type="submit" id="landingRegisterBtn" class="btn btn-outline w-full">Register</button>
-        </form>
-        <p class="auth-note">Works only if your adm number was added by the admin. Otherwise visit the admin office.</p>
-        <div class="center mt-16">
-          <button class="btn btn-ghost btn-sm" id="showLoginBtn" type="button">Back to Log In</button>
+        <div id="landingSetup" class="hidden" style="border-top:1px solid var(--border); margin-top:18px; padding-top:16px;">
+          <p class="center text-sm" style="font-weight:700; margin-bottom:8px;">First time here? Set your password</p>
+          <div id="landingSetupBox" class="info-box"></div>
+          <form id="landingSetupForm" novalidate>
+            <div class="form-group mb-12">
+              <label for="landingNewPassword">New password</label>
+              <input class="input" type="password" id="landingNewPassword" placeholder="At least 6 characters" autocomplete="new-password" minlength="6">
+            </div>
+            <div class="form-group mb-12">
+              <label for="landingConfirmPassword">Confirm password</label>
+              <input class="input" type="password" id="landingConfirmPassword" placeholder="Repeat your new password" autocomplete="new-password" minlength="6">
+            </div>
+            <button type="submit" id="landingSetupBtn" class="btn btn-primary w-full">Register as a voter</button>
+          </form>
         </div>
       </div>
 

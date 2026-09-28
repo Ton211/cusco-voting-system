@@ -1,20 +1,5 @@
-// Landing: Log In / Register as a voter toggle + credential forms.
+// Landing: student Log In with inline first-time setup.
 (function () {
-  const showLoginBtn = document.getElementById('showLoginBtn');
-  const showRegisterBtn = document.getElementById('showRegisterBtn');
-  const loginCard = document.getElementById('loginCard');
-  const registerCard = document.getElementById('registerCard');
-
-  function show(which) {
-    const login = which !== 'register';
-    if (loginCard) loginCard.classList.toggle('hidden', !login);
-    if (registerCard) registerCard.classList.toggle('hidden', login);
-    const trigger = document.getElementById('registerTrigger');
-    if (trigger) trigger.classList.toggle('hidden', !login);
-  }
-
-  if (showLoginBtn) showLoginBtn.addEventListener('click', function (e) { if (e) e.preventDefault(); show('login'); });
-  if (showRegisterBtn) showRegisterBtn.addEventListener('click', function (e) { if (e) e.preventDefault(); show('register'); });
 
   function loginEmailForInput(raw) {
     const v = String(raw || '').trim();
@@ -105,7 +90,10 @@
           } catch (e2) { last = e2; }
         }
         if (ok) return;
-        toast(friendlyError(last), 'error');
+        // No account with any password casing: first-timer? Quickly
+        // check the student list and, if listed, ask them to set a
+        // password below instead of showing a dead-end error.
+        await offerFirstTimeSetup(username, email, last);
         loginBtn.disabled = false;
         loginBtn.textContent = 'Log In';
       }
@@ -122,49 +110,88 @@
     });
   }
 
-  // Register form
-  const regForm = document.getElementById('landingRegisterForm');
-  const regAdm = document.getElementById('landingRegAdm');
-  const regBtn = document.getElementById('landingRegisterBtn');
-  const regBox = document.getElementById('landingRegBox');
+  // ---------------------------------------------------------------
+  // First-time setup: the login panel checks the student list, then
+  // "Register as a voter" saves the chosen password (acts as the
+  // password change), confirms the voter registration and logs the
+  // student straight into their account.
+  // ---------------------------------------------------------------
+  const setupWrap = document.getElementById('landingSetup');
+  const setupForm = document.getElementById('landingSetupForm');
+  const setupNewPw = document.getElementById('landingNewPassword');
+  const setupConfirmPw = document.getElementById('landingConfirmPassword');
+  const setupBtn = document.getElementById('landingSetupBtn');
+  const setupBox = document.getElementById('landingSetupBox');
+  let pendingAdm = '';
+  let pendingEmail = '';
 
-  function showReg(message, isError) {
-    regBox.textContent = message;
-    regBox.style.display = 'block';
-    regBox.style.background = isError ? 'var(--danger-soft)' : 'var(--success-soft)';
-    regBox.style.color = isError ? 'var(--danger)' : 'var(--success)';
+  function showSetup(message, isError) {
+    if (!setupBox) return;
+    setupBox.textContent = message;
+    setupBox.style.display = 'block';
+    setupBox.style.background = isError ? 'var(--danger-soft)' : 'var(--success-soft)';
+    setupBox.style.color = isError ? 'var(--danger)' : 'var(--success)';
   }
 
-  if (regForm) {
-    regForm.addEventListener('submit', async function (e) {
+  function alreadyExistsErr(err) {
+    const code = String((err && err.code) || '');
+    const msg = String((err && err.message) || '');
+    const details = String((err && err.details) || '');
+    return code.indexOf('already-exists') !== -1 || msg.indexOf('Already registered') !== -1 || details.indexOf('Already registered') !== -1;
+  }
+
+  async function offerFirstTimeSetup(adm, admEmail, lastErr) {
+    let st = null;
+    try {
+      const check = FB_FUNCTIONS.httpsCallable('checkStudentExists');
+      const res = await check({ admNumber: adm });
+      st = (res && res.data) || null;
+    } catch (e) { st = null; }
+    if (st && st.exists && !st.alreadyRegistered) {
+      pendingAdm = adm;
+      pendingEmail = admEmail;
+      if (setupWrap) setupWrap.classList.remove('hidden');
+      toast('First time here? Set your password below to register as a voter.', 'info');
+      if (setupNewPw) setupNewPw.focus();
+      return;
+    }
+    if (st && !st.exists) {
+      showError('Adm number not found. Please visit the admin office for registration.');
+      return;
+    }
+    toast(friendlyError(lastErr), 'error');
+  }
+
+  if (setupForm) {
+    setupForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       clearError();
-      const adm = String(regAdm.value || '').trim();
-      if (!adm) { showReg('Enter your adm number to register.', true); return; }
-      regBtn.disabled = true;
-      regBtn.textContent = 'Checking…';
+      const np = String(setupNewPw.value || '');
+      const cp = String(setupConfirmPw.value || '');
+      if (!pendingAdm) { showSetup('Enter your adm number above and press Log In first.', true); return; }
+      if (np.length < 6) { showSetup('Password must be at least 6 characters.', true); return; }
+      if (np !== cp) { showSetup('Passwords do not match.', true); return; }
+      if (np.trim().toUpperCase() === normalizeAdmInput(pendingAdm)) {
+        showSetup('Pick a password different from your adm number.', true);
+        return;
+      }
+      setupBtn.disabled = true;
+      setupBtn.textContent = 'Registering…';
       try {
         const fn = FB_FUNCTIONS.httpsCallable('selfRegisterVoter');
-        await fn({ admNumber: adm });
-        showReg('Registration successful. Tap Log In above and sign in with your adm number as both username and password.', false);
-        toast('Registration successful. Please log in.', 'success');
-        show('login');
-        admInput.value = adm;
-        pwInput.focus();
+        await fn({ admNumber: pendingAdm, newPassword: np });
+        // Registered with the chosen password: sign in at once so the
+        // student lands logged in on their dashboard.
+        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
       } catch (err) {
-        const msg = String((err && err.message) || '');
-        if (msg.indexOf('admin office') !== -1) {
-          showReg('Adm number not found. Please visit the admin office for registration.', true);
-        } else if (msg.indexOf('Already registered') !== -1) {
-          showReg('Already registered. Tap Log In above and sign in.', false);
-          show('login');
-          admInput.value = adm;
+        if (alreadyExistsErr(err)) {
+          if (setupWrap) setupWrap.classList.add('hidden');
+          showError('Already registered. Please log in with your adm number and password.');
         } else {
-          showReg(friendlyError(err), true);
+          showSetup(friendlyError(err), true);
         }
-      } finally {
-        regBtn.disabled = false;
-        regBtn.textContent = 'Register';
+        setupBtn.disabled = false;
+        setupBtn.textContent = 'Register as a voter';
       }
     });
   }

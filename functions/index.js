@@ -79,6 +79,7 @@ const RATE_LIMITS = {
   updateStudent: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteStudent: { windowMs: 60 * 60 * 1000, max: 60 },
   selfRegisterVoter: { windowMs: 60 * 60 * 1000, max: 5 },
+  checkStudentExists: { windowMs: 15 * 60 * 1000, max: 20 },
   setStaffAlias: { windowMs: 60 * 60 * 1000, max: 10 },
   resolveStaffUsername: { windowMs: 15 * 60 * 1000, max: 10 },
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },
@@ -583,7 +584,24 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
 
   const fullName = String(wl.fullName || '').trim() || 'Student ' + adm;
   const email = syntheticEmailForAdm(adm);
-  const password = rawAdm;
+
+  // First-time setup from the login panel: the student chooses their own
+  // password up front ("Register as a voter" saves it). The account is
+  // created with that password and needs no forced change afterwards.
+  // When no password is supplied, keep the legacy behaviour: the adm
+  // itself is the initial password and must be changed on the
+  // set-password screen.
+  const supplied = String(data.newPassword || '');
+  let password = rawAdm;
+  let mustChangePassword = true;
+  if (supplied) {
+    if (supplied.length < 6) throw HttpsError('invalid-argument', 'Password must be at least 6 characters.');
+    if (supplied.trim().toUpperCase() === adm.toUpperCase()) {
+      throw HttpsError('invalid-argument', 'Pick a password different from your adm number.');
+    }
+    password = supplied;
+    mustChangePassword = false;
+  }
 
   let uid;
   try {
@@ -597,7 +615,7 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   }
 
   try {
-    await admin.auth().setCustomUserClaims(uid, { role: 'voter', mustChangePassword: true });
+    await admin.auth().setCustomUserClaims(uid, { role: 'voter', mustChangePassword: mustChangePassword });
     await db.collection('users').doc(uid).set({
       fullName: fullName,
       voterId: adm,
@@ -608,8 +626,8 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
       gender: '',
       role: 'voter',
       status: 'active',
-      mustChangePassword: true,
-      passwordChangedAt: null,
+      mustChangePassword: mustChangePassword,
+      passwordChangedAt: mustChangePassword ? null : serverNow(),
       selfRegistered: true,
       createdAt: serverNow()
     });
@@ -618,7 +636,31 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
     admin.auth().deleteUser(uid).catch(function () {});
     throw HttpsError('internal', 'Could not finish registration: ' + err.message);
   }
-  return { ok: true, admNumber: adm };
+  return { ok: true, admNumber: adm, passwordSet: !mustChangePassword };
+});
+
+// ---------------------------------------------------------------------
+//  checkStudentExists
+//  Public first-login helper: tells the login panel whether an adm
+//  number is on the admin-imported student list and whether it already
+//  has an account, so first-timers can be asked to set a password.
+//  Returns booleans only (no names) and is rate-limited.
+// ---------------------------------------------------------------------
+exports.checkStudentExists = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('checkStudentExists', context.auth ? context.auth.uid : clientIp(context));
+
+  const adm = normalizeAdm(data.admNumber || data.voterId || '');
+  if (!adm || adm.length < 3) throw HttpsError('invalid-argument', 'Enter your adm number.');
+
+  const wlDoc = await db.collection('studentList').doc(admDocId(adm)).get();
+  if (!wlDoc.exists) return { exists: false, alreadyRegistered: false };
+
+  const dup = await db.collection('users').where('voterId', '==', adm).limit(1).get();
+  if (!dup.empty) return { exists: true, alreadyRegistered: true };
+  const wl = wlDoc.data() || {};
+  if (wl.used === true || wl.registeredUid) return { exists: true, alreadyRegistered: true };
+  return { exists: true, alreadyRegistered: false };
 });
 
 // ---------------------------------------------------------------------
