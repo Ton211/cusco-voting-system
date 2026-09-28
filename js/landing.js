@@ -35,9 +35,9 @@
   const loginBtn = document.getElementById('landingLoginBtn');
   const errorBox = document.getElementById('landingError');
 
+  // All login errors arrive as side pop-out notices, never inline.
   function showError(m) {
-    errorBox.textContent = m;
-    errorBox.style.display = 'block';
+    toast(m, 'error');
   }
   function clearError() { errorBox.style.display = 'none'; }
 
@@ -125,12 +125,8 @@
   let pendingAdm = '';
   let pendingEmail = '';
 
-  function showSetup(message, isError) {
-    if (!setupBox) return;
-    setupBox.textContent = message;
-    setupBox.style.display = 'block';
-    setupBox.style.background = isError ? 'var(--danger-soft)' : 'var(--success-soft)';
-    setupBox.style.color = isError ? 'var(--danger)' : 'var(--success)';
+  function showSetup(message) {
+    toast(message, 'error');
   }
 
   function alreadyExistsErr(err) {

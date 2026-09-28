@@ -6,9 +6,9 @@
   const errorBox = document.getElementById('errorBox');
   const saveBtn = document.getElementById('saveBtn');
 
+  // All errors arrive as side pop-out notices, never inline.
   function showError(m) {
-    errorBox.textContent = m;
-    errorBox.style.display = 'block';
+    toast(m, 'error');
   }
   function clearError() { errorBox.style.display = 'none'; }
 

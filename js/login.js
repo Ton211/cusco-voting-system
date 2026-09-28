@@ -9,9 +9,9 @@
   const submitBtn = document.getElementById('loginBtn');
   const forgotLink = document.getElementById('forgotLink');
 
+  // All login errors arrive as side pop-out notices, never inline.
   function showError(message) {
-    errorBox.textContent = message;
-    errorBox.style.display = 'block';
+    toast(message, 'error');
   }
 
   function clearError() {
@@ -159,12 +159,8 @@
   let pendingAdm = '';
   let pendingEmail = '';
 
-  function showSetup(message, isError) {
-    if (!setupBox) return;
-    setupBox.textContent = message;
-    setupBox.style.display = 'block';
-    setupBox.style.background = isError ? 'var(--danger-soft)' : 'var(--success-soft)';
-    setupBox.style.color = isError ? 'var(--danger)' : 'var(--success)';
+  function showSetup(message) {
+    toast(message, 'error');
   }
 
   function alreadyExistsErr(err) {
