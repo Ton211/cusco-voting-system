@@ -66,7 +66,7 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff']).get();
+    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user']).get();
     allStaff = snap.docs.map(function (doc) {
       return Object.assign({ uid: doc.id }, doc.data());
     });
@@ -216,7 +216,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff'])], load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });

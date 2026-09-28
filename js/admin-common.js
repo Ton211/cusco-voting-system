@@ -1,6 +1,6 @@
 // =====================================================================
 // Shared admin panel chrome: sidebar name, active nav, logout,
-// view-only staff limits (director, principal, dean, registrar, staff)
+// view-only staff limits (director, principal, dean, registrar, staff, user)
 // =====================================================================
 
 // Pages a view-only staff member may open. Everything else in the

@@ -5,7 +5,7 @@
 //  been verified.
 //
 //  data-page="admin"  -> admin/superadmin + view-only staff
-//                       (director, principal, dean, registrar, staff;
+//                       (director, principal, dean, registrar, staff, user;
 //                       per-page limits enforced in admin-common.js)
 //  data-page="voter"  -> voter only
 //  data-page="login"        -> shared login
@@ -18,7 +18,7 @@ window.__auth = { user: null, role: null };
 // View-only staff roles. They use the admin portal but may only see
 // dashboard (read-only, no quick actions), candidates, positions,
 // election, live, results, reports.
-window.VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff'];
+window.VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
 window.isViewerRole = function (role) {
   return window.VIEWER_ROLES.indexOf(role) !== -1;
 };

@@ -28,15 +28,15 @@ const db = admin.firestore();
 const inc = admin.firestore.FieldValue.increment;
 const serverNow = admin.firestore.FieldValue.serverTimestamp;
 
-const ROLES = ['voter', 'admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff'];
+const ROLES = ['voter', 'admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user'];
 
 //  View-only staff roles: may see dashboard (read-only, no quick actions),
 //  candidates, positions, elections, live, results and reports. They cannot mutate anything:
 //  every mutating function below requires admin/superadmin, so these
 //  roles are denied by default. Only creation/role-assignment (which
 //  validates against ROLES) and reads need to allow them.
-const VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff'];
-const STAFF_ROLES = ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff'];
+const VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
+const STAFF_ROLES = ['admin', 'superadmin', 'director', 'principal', 'dean', 'registrar', 'staff', 'user'];
 
 // ---------------------------------------------------------------------
 //  Optionally require a trusted App Check token on callable functions.
@@ -191,7 +191,7 @@ async function generateVoterId() {
 // ---------------------------------------------------------------------
 //  registerUser
 //  Only a Super Admin may create accounts. The plain admin role is
-//  view-only, as are director / principal / dean / registrar / staff.
+//  view-only, as are director / principal / dean / registrar / staff / user.
 // ---------------------------------------------------------------------
 exports.registerUser = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
