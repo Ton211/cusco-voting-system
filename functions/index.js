@@ -79,7 +79,9 @@ const RATE_LIMITS = {
   updateStudent: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteStudent: { windowMs: 60 * 60 * 1000, max: 60 },
   selfRegisterVoter: { windowMs: 60 * 60 * 1000, max: 5 },
-  checkStudentExists: { windowMs: 15 * 60 * 1000, max: 20 },
+  // Generous cap: every adm login press costs one call and whole
+  // schools can share a single public IP behind NAT.
+  checkStudentExists: { windowMs: 15 * 60 * 1000, max: 200 },
   setStaffAlias: { windowMs: 60 * 60 * 1000, max: 10 },
   resolveStaffUsername: { windowMs: 15 * 60 * 1000, max: 10 },
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },

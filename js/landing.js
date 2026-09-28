@@ -60,7 +60,10 @@
       clearError();
       const rawUsername = String(admInput.value || '').trim();
       let password = String(pwInput.value || '');
-      if (!rawUsername || !password) { showError('Enter your adm number and password.'); return; }
+      // Adm logins may omit the password: first-timers do not have one
+      // yet and go through the student-list check below.
+      const isAdmStyle = rawUsername.indexOf('@') === -1;
+      if (!rawUsername || (!password && !isAdmStyle)) { showError('Enter your adm number and password.'); return; }
       // Normalize the adm upfront. If the password is just the adm number
       // typed in another case (first login), use the normalized form on
       // the FIRST attempt so login takes 1 request instead of up to 3.
@@ -72,9 +75,55 @@
       loginBtn.disabled = true;
       loginBtn.textContent = 'Logging in…';
       const email = loginEmailForInput(username);
+      // Check the student list FIRST, before any sign-in attempt, so
+      // first-timers go straight to setting their password without a
+      // failed Auth request (no 400 noise). Only already-registered
+      // students reach signInWithEmailAndPassword.
+      if (isAdmStyle) {
+        let st = null;
+        try {
+          const precheck = FB_FUNCTIONS.httpsCallable('checkStudentExists');
+          const res = await withTimeout(precheck({ admNumber: username }), 15000, 'Student check');
+          st = (res && res.data) || null;
+        } catch (e) { st = null; }
+        if (st && st.exists && !st.alreadyRegistered) {
+          pendingAdm = username;
+          pendingEmail = email;
+          if (setupWrap) setupWrap.classList.remove('hidden');
+          loginForm.style.display = 'none';
+          if (loginLinks) loginLinks.style.display = 'none';
+          toast('First time here? Set your password below to register as a voter.', 'info');
+          if (setupNewPw) setupNewPw.focus();
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Log In';
+          return;
+        }
+        if (st && !st.exists) {
+          showError('Adm number not found. Please visit the admin office for registration.');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Log In';
+          return;
+        }
+        if (st && st.alreadyRegistered && !password) {
+          showError('Enter your password.');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Log In';
+          return;
+        }
+        // Check unavailable (st null): fall through to the sign-in
+        // attempt below; the catch block re-checks as a safety net.
+      }
       try {
         await AUTH.signInWithEmailAndPassword(email, password);
       } catch (err) {
+        // While Auth is throttling this device, never fire retries: they
+        // cannot succeed and only extend the block. Just say to wait.
+        if (err && err.code === 'auth/too-many-requests') {
+          toast(friendlyError(err), 'error');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Log In';
+          return;
+        }
         const upper = String(password || '').toUpperCase();
         const lower = String(password || '').toLowerCase();
         const variants = [];
@@ -142,7 +191,7 @@
     let st = null;
     try {
       const check = FB_FUNCTIONS.httpsCallable('checkStudentExists');
-      const res = await check({ admNumber: adm });
+      const res = await withTimeout(check({ admNumber: adm }), 15000, 'Student check');
       st = (res && res.data) || null;
     } catch (e) { st = null; }
     if (st && st.exists && !st.alreadyRegistered) {
@@ -197,16 +246,30 @@
       setupBtn.textContent = 'Registering…';
       try {
         const fn = FB_FUNCTIONS.httpsCallable('selfRegisterVoter');
-        await fn({ admNumber: pendingAdm, newPassword: np });
-        // Registered with the chosen password: sign in at once so the
-        // student lands logged in on their dashboard.
-        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
+        await withTimeout(fn({ admNumber: pendingAdm, newPassword: np }), 25000, 'Registration');
       } catch (err) {
         if (alreadyExistsErr(err)) {
           restoreLoginForm();
           showError('Already registered. Please log in with your adm number and password.');
         } else {
           showSetup(friendlyError(err), true);
+        }
+        setupBtn.disabled = false;
+        setupBtn.textContent = 'Register as a voter';
+        return;
+      }
+      // Registered with the chosen password: sign in at once so the
+      // student lands logged in on their dashboard. Kept separate so a
+      // sign-in failure can never stick the button: the account now
+      // exists, so the form is restored either way.
+      try {
+        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
+      } catch (signErr) {
+        restoreLoginForm();
+        if (signErr && signErr.code === 'auth/too-many-requests') {
+          showError('Registered successfully. Too many attempts right now — wait a few minutes, then log in.');
+        } else {
+          showError(friendlyError(signErr));
         }
         setupBtn.disabled = false;
         setupBtn.textContent = 'Register as a voter';

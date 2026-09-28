@@ -63,7 +63,10 @@
     const rawUsername = emailInput.value.trim();
     let password = passwordInput.value;
 
-    if (!rawUsername || !password) {
+    // Adm-style student logins may omit the password: first-timers do
+    // not have one yet and go through the student-list check below.
+    const isAdmStyle = !isStaffPage && rawUsername.indexOf('@') === -1;
+    if (!rawUsername || (!password && !isAdmStyle)) {
       showError(isStaffPage ? 'Enter your staff username and password.' : 'Enter your adm number and password.');
       return;
     }
@@ -84,6 +87,45 @@
     // Hoisted so the catch block below (case retries + first-time
     // student-list check) can reuse the same address.
     let email = '';
+
+    // Student adm logins: check the student list FIRST, before any
+    // sign-in attempt, so first-timers go straight to setting their
+    // password without a failed Auth request (no 400 noise). Only
+    // already-registered students reach signInWithEmailAndPassword.
+    if (isAdmStyle) {
+      let st = null;
+      try {
+        const precheck = FB_FUNCTIONS.httpsCallable('checkStudentExists');
+        const res = await withTimeout(precheck({ admNumber: username }), 15000, 'Student check');
+        st = (res && res.data) || null;
+      } catch (e) { st = null; }
+      if (st && st.exists && !st.alreadyRegistered) {
+        pendingAdm = username;
+        pendingEmail = loginEmailForInput(username);
+        if (setupWrap) setupWrap.classList.remove('hidden');
+        form.style.display = 'none';
+        if (loginLinks) loginLinks.style.display = 'none';
+        toast('First time here? Set your password below to register as a voter.', 'info');
+        if (newPwInput) newPwInput.focus();
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultBtnText;
+        return;
+      }
+      if (st && !st.exists) {
+        showError('Adm number not found. Please visit the admin office for registration.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultBtnText;
+        return;
+      }
+      if (st && st.alreadyRegistered && !password) {
+        showError('Enter your password.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultBtnText;
+        return;
+      }
+      // Check unavailable (st null): fall through to the sign-in
+      // attempt below; the catch block re-checks as a safety net.
+    }
     try {
       if (username.indexOf('@') !== -1) {
         email = username.toLowerCase();
@@ -105,9 +147,11 @@
       await AUTH.signInWithEmailAndPassword(email, password);
       // auth-guard.js observes the auth state change and routes by role.
     } catch (err) {
-      // First-login safety net: initial passwords may differ in case from
-      // what was typed at registration, so retry other cases for adm logins.
-      if (!isStaffPage && username.indexOf('@') === -1) {
+      // While Auth is throttling this device, never fire retries: they
+      // cannot succeed and only extend the block. Just say to wait.
+      if (err && err.code === 'auth/too-many-requests') {
+        toast(friendlyError(err), 'error');
+      } else if (!isStaffPage && username.indexOf('@') === -1) {
         const variants = [];
         const upper = String(password || '').toUpperCase();
         const lower = String(password || '').toLowerCase();
@@ -176,7 +220,7 @@
     let st = null;
     try {
       const check = FB_FUNCTIONS.httpsCallable('checkStudentExists');
-      const res = await check({ admNumber: adm });
+      const res = await withTimeout(check({ admNumber: adm }), 15000, 'Student check');
       st = (res && res.data) || null;
     } catch (e) { st = null; }
     if (st && st.exists && !st.alreadyRegistered) {
@@ -231,16 +275,30 @@
       setupBtn.textContent = 'Registering…';
       try {
         const fn = FB_FUNCTIONS.httpsCallable('selfRegisterVoter');
-        await fn({ admNumber: pendingAdm, newPassword: np });
-        // Registered with the chosen password: sign in at once so the
-        // student lands logged in. auth-guard routes by role from here.
-        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
+        await withTimeout(fn({ admNumber: pendingAdm, newPassword: np }), 25000, 'Registration');
       } catch (err) {
         if (alreadyExistsErr(err)) {
           restoreLoginForm();
           showError('Already registered. Please log in with your adm number and password.');
         } else {
           showSetup(friendlyError(err), true);
+        }
+        setupBtn.disabled = false;
+        setupBtn.textContent = 'Register as a voter';
+        return;
+      }
+      // Registered with the chosen password: sign in at once so the
+      // student lands logged in. auth-guard routes by role from here.
+      // Kept separate so a sign-in failure can never stick the button:
+      // the account now exists, so the form is restored either way.
+      try {
+        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
+      } catch (signErr) {
+        restoreLoginForm();
+        if (signErr && signErr.code === 'auth/too-many-requests') {
+          showError('Registered successfully. Too many attempts right now — wait a few minutes, then log in.');
+        } else {
+          showError(friendlyError(signErr));
         }
         setupBtn.disabled = false;
         setupBtn.textContent = 'Register as a voter';

@@ -129,6 +129,8 @@ function friendlyError(err) {
     'auth/invalid-login-credentials': 'Incorrect email or password.',
     'auth/invalid-credential': 'Incorrect username/email or password. Check and try again.',
     'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/too-many-requests': 'Too many attempts from this device. Please wait a few minutes, then try again.',
+    'auth/network-request-failed': 'Network error. Check your connection and try again.',
     'auth/email-already-in-use': 'That email is already registered.',
     'unauthenticated': 'You must be signed in.',
     'permission-denied': 'You do not have permission to do that.',
@@ -370,4 +372,22 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () { enhancePasswordFields(document); });
 } else {
   enhancePasswordFields(document);
+}
+
+// ---------------------------------------------------------------
+//  withTimeout: rejects if a promise does not settle within ms.
+//  Network safety net so login buttons can never stick forever on a
+//  hanging request — the UI always recovers with an error message.
+// ---------------------------------------------------------------
+function withTimeout(promise, ms, label) {
+  let timer = null;
+  const timeout = new Promise(function (_, reject) {
+    timer = setTimeout(function () {
+      reject(new Error((label || 'Request') + ' timed out. Check your connection and try again.'));
+    }, ms || 15000);
+  });
+  return Promise.race([promise, timeout]).then(
+    function (v) { if (timer) clearTimeout(timer); return v; },
+    function (e) { if (timer) clearTimeout(timer); throw e; }
+  );
 }
