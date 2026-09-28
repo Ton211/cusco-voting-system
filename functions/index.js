@@ -1277,37 +1277,46 @@ async function resolveRegistrationDoc(now) {
 //  action schedule: opens at startTimeISO, closes at endTimeISO.
 // ---------------------------------------------------------------------
 exports.setVoterRegistration = fn.https.onCall(async (data, context) => {
-  verifyAppCheck(context);
-  rateLimit('setVoterRegistration', context.auth ? context.auth.uid : clientIp(context));
-  requireSuperAdmin(context);
+  // Report the REAL cause: an unwrapped throw would surface as a bare
+  // "internal" with no message, hiding e.g. Firestore/permission faults.
+  try {
+    verifyAppCheck(context);
+    rateLimit('setVoterRegistration', context.auth ? context.auth.uid : clientIp(context));
+    requireSuperAdmin(context);
 
-  const action = String(data.action || '').trim();
-  if (['open', 'close', 'schedule'].indexOf(action) === -1) {
-    throw HttpsError('invalid-argument', 'Action must be open, close or schedule.');
-  }
+    if (!data || typeof data !== 'object') throw HttpsError('invalid-argument', 'Invalid payload.');
+    const action = String(data.action || '').trim();
+    if (['open', 'close', 'schedule'].indexOf(action) === -1) {
+      throw HttpsError('invalid-argument', 'Action must be open, close or schedule.');
+    }
 
-  const ref = db.collection('settings').doc(REG_DOC);
-  if (action === 'close') {
-    await ref.set({ status: 'closed', updatedAt: serverNow() }, { merge: true });
-    return { status: 'closed' };
+    const ref = db.collection('settings').doc(REG_DOC);
+    if (action === 'close') {
+      await ref.set({ status: 'closed', updatedAt: serverNow() }, { merge: true });
+      return { status: 'closed' };
+    }
+    if (action === 'open') {
+      const hasEnd = data.endTimeISO !== undefined && data.endTimeISO !== null && String(data.endTimeISO) !== '';
+      const endTime = hasEnd ? toTimestamp(data.endTimeISO) : null;
+      if (hasEnd && !endTime) throw HttpsError('invalid-argument', 'Invalid end time.');
+      if (endTime && Date.now() > tsMillis(endTime)) throw HttpsError('invalid-argument', 'End time is already in the past.');
+      const fields = { status: 'open', updatedAt: serverNow() };
+      if (endTime) fields.endTime = endTime;
+      else fields.endTime = admin.firestore.FieldValue.delete();
+      await ref.set(fields, { merge: true });
+      return { status: 'open' };
+    }
+    const startTime = toTimestamp(data.startTimeISO);
+    const endTime = toTimestamp(data.endTimeISO);
+    if (!startTime || !endTime) throw HttpsError('invalid-argument', 'Start and end times are required.');
+    if (tsMillis(endTime) <= tsMillis(startTime)) throw HttpsError('invalid-argument', 'End time must be after the start time.');
+    await ref.set({ status: 'scheduled', startTime: startTime, endTime: endTime, updatedAt: serverNow() }, { merge: true });
+    return { status: 'scheduled' };
+  } catch (err) {
+    if (err instanceof functions.https.HttpsError) throw err;
+    console.error('setVoterRegistration failed:', err);
+    throw HttpsError('internal', 'Could not save the registration schedule: ' + ((err && err.message) || err));
   }
-  if (action === 'open') {
-    const hasEnd = data.endTimeISO !== undefined && data.endTimeISO !== null && String(data.endTimeISO) !== '';
-    const endTime = hasEnd ? toTimestamp(data.endTimeISO) : null;
-    if (hasEnd && !endTime) throw HttpsError('invalid-argument', 'Invalid end time.');
-    if (endTime && Date.now() > tsMillis(endTime)) throw HttpsError('invalid-argument', 'End time is already in the past.');
-    const fields = { status: 'open', updatedAt: serverNow() };
-    if (endTime) fields.endTime = endTime;
-    else fields.endTime = admin.firestore.FieldValue.delete();
-    await ref.set(fields, { merge: true });
-    return { status: 'open' };
-  }
-  const startTime = toTimestamp(data.startTimeISO);
-  const endTime = toTimestamp(data.endTimeISO);
-  if (!startTime || !endTime) throw HttpsError('invalid-argument', 'Start and end times are required.');
-  if (tsMillis(endTime) <= tsMillis(startTime)) throw HttpsError('invalid-argument', 'End time must be after the start time.');
-  await ref.set({ status: 'scheduled', startTime: startTime, endTime: endTime, updatedAt: serverNow() }, { merge: true });
-  return { status: 'scheduled' };
 });
 
 // ---------------------------------------------------------------------
@@ -1316,30 +1325,36 @@ exports.setVoterRegistration = fn.https.onCall(async (data, context) => {
 //  admin's registration window is open; one registration per account.
 // ---------------------------------------------------------------------
 exports.registerAsVoter = fn.https.onCall(async (data, context) => {
-  verifyAppCheck(context);
-  const uid = requireAuth(context);
-  rateLimit('registerAsVoter', uid);
+  try {
+    verifyAppCheck(context);
+    const uid = requireAuth(context);
+    rateLimit('registerAsVoter', uid);
 
-  const userRef = db.collection('users').doc(uid);
-  const userDoc = await userRef.get();
-  if (!userDoc.exists) throw HttpsError('not-found', 'No voter profile found.');
-  const profile = userDoc.data() || {};
-  if (profile.role !== 'voter') throw HttpsError('permission-denied', 'Only voters may register as a voter.');
-  if (profile.status !== 'active') throw HttpsError('failed-precondition', 'Your account is inactive.');
-  if (profile.voterRegistered === true) throw HttpsError('already-exists', 'You are already registered as a voter.');
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) throw HttpsError('not-found', 'No voter profile found.');
+    const profile = userDoc.data() || {};
+    if (profile.role !== 'voter') throw HttpsError('permission-denied', 'Only voters may register as a voter.');
+    if (profile.status !== 'active') throw HttpsError('failed-precondition', 'Your account is inactive.');
+    if (profile.voterRegistered === true) throw HttpsError('already-exists', 'You are already registered as a voter.');
 
-  // Resolve-then-check in one call so the window flips the instant it
-  // is due, even before the 1-minute scheduler ticks.
-  const state = await resolveRegistrationDoc(Date.now());
-  if (!state.open) {
-    if (state.status === 'scheduled' && state.startMs) {
-      throw HttpsError('failed-precondition', 'Voter registration has not opened yet.');
+    // Resolve-then-check in one call so the window flips the instant it
+    // is due, even before the 1-minute scheduler ticks.
+    const state = await resolveRegistrationDoc(Date.now());
+    if (!state.open) {
+      if (state.status === 'scheduled' && state.startMs) {
+        throw HttpsError('failed-precondition', 'Voter registration has not opened yet.');
+      }
+      throw HttpsError('failed-precondition', 'Voter registration is currently closed.');
     }
-    throw HttpsError('failed-precondition', 'Voter registration is currently closed.');
-  }
 
-  await userRef.update({ voterRegistered: true, voterRegisteredAt: serverNow(), updatedAt: serverNow() });
-  return { ok: true };
+    await userRef.update({ voterRegistered: true, voterRegisteredAt: serverNow(), updatedAt: serverNow() });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof functions.https.HttpsError) throw err;
+    console.error('registerAsVoter failed:', err);
+    throw HttpsError('internal', 'Could not complete voter registration: ' + ((err && err.message) || err));
+  }
 });
 
 // ---------------------------------------------------------------------

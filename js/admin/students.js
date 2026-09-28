@@ -323,7 +323,7 @@
       await setRegFn(payload);
       toast('Voter registration is now open.', 'success');
       await loadRegWindow();
-    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    } catch (err) { const e = callFriendly(err); toast(e.message + ' [' + e.code + ']', 'error'); }
     finally { $regOpenBtn.disabled = false; }
   });
   if ($regScheduleBtn) $regScheduleBtn.addEventListener('click', async function () {
@@ -335,7 +335,7 @@
       await setRegFn({ action: 'schedule', startTimeISO: startIso, endTimeISO: endIso });
       toast('Registration schedule saved.', 'success');
       await loadRegWindow();
-    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    } catch (err) { const e = callFriendly(err); toast(e.message + ' [' + e.code + ']', 'error'); }
     finally { $regScheduleBtn.disabled = false; }
   });
   if ($regCloseBtn) $regCloseBtn.addEventListener('click', async function () {
@@ -346,7 +346,7 @@
       await setRegFn({ action: 'close' });
       toast('Voter registration is now closed.', 'success');
       await loadRegWindow();
-    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    } catch (err) { const e = callFriendly(err); toast(e.message + ' [' + e.code + ']', 'error'); }
     finally { $regCloseBtn.disabled = false; }
   });
 
