@@ -3,6 +3,7 @@
    Solid colors only. No gradients. No emoji. System font stack.
    ===================================================================== */
 :root {
+  --kb-height: 0px;
   --primary: #1d4ed8;
   --primary-dark: #1e40af;
   --primary-ink: #1e3a8a;
@@ -301,7 +302,41 @@ table.data tbody tr:hover { background: #f5f8fd; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 
 /* center (login / success / voter cards) */
-.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: calc(var(--kb-height, 0px) + 24px);
+}
+/* margin:auto keeps the card vertically centered when there is spare
+   room, but lets it stick to the top and scroll when the on-screen
+   keyboard shrinks the visible area (align-items:center alone would
+   clip the top of the card instead). */
+.auth-page > * { margin: auto; }
+/* While the keyboard is open, reserve its height as bottom padding so
+   the focused input scrolls fully above it without manual dragging. */
+body.keyboard-open .auth-page {
+  padding-bottom: calc(var(--kb-height, 0px) + 24px);
+}
+/* Set-password page uses an inline flex body instead of .auth-page:
+   same treatment so its card lifts above the keyboard too. */
+body[data-page="set-password"] {
+  justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 16px;
+  align-items: flex-start !important;
+  scroll-padding-bottom: calc(var(--kb-height, 0px) + 24px);
+}
+body[data-page="set-password"] > .center-card { margin: auto; }
+body.keyboard-open[data-page="set-password"] {
+  padding-bottom: calc(var(--kb-height, 0px) + 24px);
+}
 .center-card {
   width: 100%; max-width: 460px; margin: 0 auto;
   background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--primary); border-radius: 14px;
