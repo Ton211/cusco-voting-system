@@ -46,15 +46,17 @@ window.hideForReadOnly = function (sel) {
       nameEl.innerHTML = '<strong>' + esc(short) + '</strong><span>' + esc(label) + '</span>';
     }
 
-    // Plain admins see everything except Users, but edit nothing.
-    // (users.js additionally replaces the page for non-superadmins.)
+    // Plain admins see everything except Students, Voters and Users, and
+    // edit nothing. (users.js additionally replaces the page for
+    // non-superadmins.) Matches both /admin/x and /admin/x.html URLs.
     if (a.role === 'admin') {
+      var ADMIN_HIDDEN = ['/admin/students', '/admin/voters', '/admin/users'];
       qsa('.sidebar nav a').forEach(function (link) {
-        if (link.getAttribute('href') === '/admin/users.html') {
+        if (ADMIN_HIDDEN.indexOf(String(link.getAttribute('href')).replace(/\.html$/, '')) !== -1) {
           link.style.display = 'none';
         }
       });
-      if (location.pathname === '/admin/users.html') {
+      if (ADMIN_HIDDEN.indexOf(String(location.pathname).replace(/\.html$/, '')) !== -1) {
         location.replace('/admin/dashboard.html');
         return;
       }
