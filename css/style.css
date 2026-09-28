@@ -417,11 +417,56 @@ table.data tbody tr:hover { background: #f5f8fd; }
 .search-box input { padding-left: 12px; }
 
 @media (max-width: 860px) {
-  .topbar { flex-wrap: wrap; gap: 8px; }
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+  .voter-nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  .voter-nav a { white-space: nowrap; flex: none; }
+  .voter-main { padding: 20px 12px 40px; }
+
+  /* Admin shell becomes a top header: compact brand, one scrollable nav
+     row, and the user/logout row stays visible (logout is never hidden). */
   .admin-shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; flex-direction: column; }
-  .sidebar nav { flex-direction: row; flex-wrap: wrap; }
-  .sidebar-user { display: none; }
-  .content { padding: 18px 14px 48px; }
+  .sidebar { position: sticky; top: 0; z-index: 60; height: auto; padding: 10px 12px; gap: 8px; }
+  .brand { padding: 2px 4px 8px; margin-bottom: 0; font-size: 17px; }
+  .sidebar nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding-bottom: 4px; }
+  .sidebar nav a { white-space: nowrap; flex: none; padding: 9px 13px; border-left: 0; border-bottom: 3px solid transparent; }
+  .sidebar nav a.active { border-bottom-color: #7aa2f0; }
+  .sidebar-user { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid rgba(255, 255, 255, .12); padding-top: 8px; }
+  .sidebar-user strong { font-size: 12px; }
+  .btn-logout { width: auto; margin-top: 0; padding: 9px 16px; flex: none; }
+
+  .content { padding: 16px 12px 56px; }
+  .page-head h1 { font-size: 20px; }
+  .card { padding: 16px; }
+  .card-title { flex-wrap: wrap; }
+  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .stat { padding: 12px 14px; }
+  .stat .num { font-size: 24px; }
+
+  /* Touch-friendly targets, and 16px inputs stop iOS auto-zoom on focus. */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; }
+  .input, select.input, textarea.input { font-size: 16px; padding: 12px; }
+
+  /* Tables scroll sideways deliberately instead of squeezing unreadably. */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  table.data { min-width: 600px; }
+  table.data th, table.data td { padding: 10px; }
+
+  .countdown { font-size: 34px; }
+  .graph-meta { flex-wrap: wrap; }
+  .modal { padding: 12px; }
+  .modal-card { padding: 20px 16px; }
   .center-card { padding: 24px 20px; }
+  .auth-page { padding: 16px 12px; min-height: 100dvh; }
+  .toast-root { left: 12px; right: 12px; top: 12px; }
+  .toast { min-width: 0; max-width: none; }
+}
+
+@media (max-width: 560px) {
+  /* Full-width stacked actions: easy thumbs on small phones. */
+  .page-head { flex-direction: column; align-items: stretch; }
+  .modal-footer { flex-direction: column-reverse; align-items: stretch; }
+  .modal-footer .btn { width: 100%; }
+  .hero h1 { font-size: 24px; }
+  .search-box { max-width: none; width: 100%; }
 }
