@@ -108,7 +108,7 @@
       if (setupWrap) setupWrap.classList.remove('hidden');
       form.style.display = 'none';
       if (loginLinks) loginLinks.style.display = 'none';
-      toast('First time here? Set your password below to register as a voter.', 'info');
+      toast('First time here? Set your password below.', 'info');
       if (newPwInput) newPwInput.focus();
       submitBtn.disabled = false;
       submitBtn.textContent = defaultBtnText;
@@ -242,7 +242,7 @@
 
   // ---------------------------------------------------------------
   // First-time setup: the login panel checks the student list, then
-  // "Register as a voter" saves the chosen password (acts as the
+  // "Change Password" saves the chosen password (acts as the
   // password change), confirms the voter registration and logs the
   // student straight into their account.
   // ---------------------------------------------------------------
@@ -284,7 +284,7 @@
       if (setupWrap) setupWrap.classList.remove('hidden');
       form.style.display = 'none';
       if (loginLinks) loginLinks.style.display = 'none';
-      toast('First time here? Set your password below to register as a voter.', 'info');
+      toast('First time here? Set your password below.', 'info');
       if (newPwInput) newPwInput.focus();
       return;
     }
@@ -307,7 +307,7 @@
     if (loginLinks) loginLinks.style.display = '';
     if (typeof setupBtn !== 'undefined' && setupBtn) {
       setupBtn.disabled = false;
-      setupBtn.textContent = 'Register as a voter';
+      setupBtn.textContent = 'Change Password';
     }
     passwordInput.value = '';
     emailInput.focus();
@@ -333,7 +333,7 @@
       }
       setupBusy = true;
       setupBtn.disabled = true;
-      setupBtn.textContent = 'Registering…';
+      setupBtn.textContent = 'Saving…';
       try {
         const fn = FB_FUNCTIONS.httpsCallable('selfRegisterVoter');
         await withTimeout(fn({ admNumber: pendingAdm, newPassword: np }), 25000, 'Registration');
@@ -345,29 +345,29 @@
           showSetup(friendlyError(err), true);
         }
         setupBtn.disabled = false;
-        setupBtn.textContent = 'Register as a voter';
+        setupBtn.textContent = 'Change Password';
         setupBusy = false;
         return;
       }
       // Registered with the chosen password: sign in at once so the
       // student lands logged in. Redirect explicitly (never rely on the
-      // guard alone) so the button can never stick on "Registering…".
+      // guard alone) so the button can never stick on "Saving…".
       // Kept separate so a sign-in failure restores the form either way.
       setupBtn.textContent = 'Signing you in…';
       try {
         await withTimeout(AUTH.signInWithEmailAndPassword(pendingEmail, np), 15000, 'Sign in');
-        toast('Registered successfully. Welcome!', 'success');
+        toast('Password saved. Welcome!', 'success');
         location.replace('/voter/dashboard.html');
         return;
       } catch (signErr) {
         restoreLoginForm();
         if (signErr && signErr.code === 'auth/too-many-requests') {
-          showError('Registered successfully. Too many attempts right now — wait a few minutes, then log in.');
+          showError('Password saved. Too many attempts right now — wait a few minutes, then log in.');
         } else {
           showError(friendlyError(signErr));
         }
         setupBtn.disabled = false;
-        setupBtn.textContent = 'Register as a voter';
+        setupBtn.textContent = 'Change Password';
         setupBusy = false;
       }
     });
