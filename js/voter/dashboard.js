@@ -1,25 +1,11 @@
 // =====================================================================
 //  Voter dashboard: elections overview, same look as the admin
 //  Elections section — status badges (Open / Scheduled / Closed),
-//  voting window, votes cast + turnout, and Vote / Results actions.
+//  voting window, and Vote / Results actions.
 //  No personal header: just the elections.
 // =====================================================================
 (function () {
   const $body = document.getElementById('dashboardBody');
-
-  // Active-voter count behind the turnout figures (students cannot read
-  // the roster). Cached 60s so real-time refreshes don't hammer it.
-  let cachedVoters = null;
-  let cachedVotersAt = 0;
-
-  async function getActiveVoters() {
-    if (cachedVoters !== null && Date.now() - cachedVotersAt < 60000) return cachedVoters;
-    const fn = FB_FUNCTIONS.httpsCallable('getPublicStats');
-    const res = await fn({});
-    cachedVoters = (res.data && res.data.activeVoters) || 0;
-    cachedVotersAt = Date.now();
-    return cachedVoters;
-  }
 
   function badgeFor(status) {
     if (status === 'active') return '<span class="badge active-running">Open</span>';
@@ -39,10 +25,9 @@
     const a = window.__auth;
     if (!a.user) return;
 
-    const [userSnap, electionsSnap, votesSnap] = await Promise.all([
+    const [userSnap, electionsSnap] = await Promise.all([
       DB.collection('users').doc(a.user.uid).get(),
-      DB.collection('elections').get(),
-      DB.collection('votes').get().catch(function () { return null; })
+      DB.collection('elections').get()
     ]);
 
     const profile = userSnap.exists ? userSnap.data() : {};
@@ -62,18 +47,6 @@
       return tsToDate(y.startTime).getTime() - tsToDate(x.startTime).getTime();
     });
 
-    const castByElection = {};
-    if (votesSnap) {
-      votesSnap.docs.forEach(function (d) {
-        castByElection[d.id] = (d.data() || {}).totalVotes || 0;
-      });
-    }
-
-    let activeVoters = 0;
-    try {
-      activeVoters = await getActiveVoters();
-    } catch (e) { activeVoters = 0; }
-
     const votedIn = profile.votedIn || {};
     const openUnvoted = elections.some(function (e) {
       return e.status === 'active' && isElectionOpen(e) && votedIn[e.id] !== true;
@@ -90,8 +63,6 @@
       html += '<div class="empty">No elections yet. Please check back later.</div>';
     } else {
       html += elections.map(function (e) {
-        const cast = castByElection[e.id] || 0;
-        const turnout = activeVoters ? Math.min(100, Math.round((cast / activeVoters) * 100)) : 0;
         const voted = votedIn[e.id] === true;
         const actions = e.status === 'active' && isElectionOpen(e) && !voted
           ? '<a class="btn btn-primary btn-sm" href="/voter/vote.html">Vote</a>'
@@ -106,7 +77,6 @@
           '</div>' +
           '</div>' +
           '<div class="muted text-sm">Voting window: <strong>' + esc(fmtDateTime(e.startTime)) + '</strong> to <strong>' + esc(fmtDateTime(e.endTime)) + '</strong></div>' +
-          '<div class="mt-16 text-sm">Votes cast: <strong>' + fmtNum(cast) + '</strong> · Turnout: <strong>' + turnout + '%</strong></div>' +
           '</div>'
         );
       }).join('');
@@ -120,9 +90,9 @@
   window.authPromise.then(function () {
     try { sessionStorage.removeItem('cusco_ballot'); } catch (e) {}
     return load().then(function () {
-      // Real-time: elections, tallies, or own voter record update at once.
+      // Real-time: elections or own voter record update at once.
       const uid = window.__auth && window.__auth.user ? window.__auth.user.uid : null;
-      const refs = [DB.collection('elections'), DB.collection('votes')];
+      const refs = [DB.collection('elections')];
       if (uid) {
         refs.push(DB.collection('users').doc(uid));
         refs.push(DB.collection('users').doc(uid).collection('receipts'));
