@@ -82,6 +82,9 @@ const RATE_LIMITS = {
   // Generous cap: every adm login press costs one call and whole
   // schools can share a single public IP behind NAT.
   checkStudentExists: { windowMs: 15 * 60 * 1000, max: 200 },
+  // Called on every student dashboard load (cached client-side), so the
+  // cap must survive whole schools behind one NAT address.
+  getPublicStats: { windowMs: 60 * 60 * 1000, max: 300 },
   setStaffAlias: { windowMs: 60 * 60 * 1000, max: 10 },
   resolveStaffUsername: { windowMs: 15 * 60 * 1000, max: 10 },
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },
@@ -663,6 +666,25 @@ exports.checkStudentExists = fn.https.onCall(async (data, context) => {
   const wl = wlDoc.data() || {};
   if (wl.used === true || wl.registeredUid) return { exists: true, alreadyRegistered: true };
   return { exists: true, alreadyRegistered: false };
+});
+
+// ---------------------------------------------------------------------
+//  getPublicStats
+//  Public aggregates for the student dashboard: the active-voter count
+//  behind the per-election turnout figures. Students cannot read the
+//  voter roster, so the dashboard gets the single number it needs here.
+//  Count aggregation only — no voter records leave the server.
+// ---------------------------------------------------------------------
+exports.getPublicStats = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('getPublicStats', context.auth ? context.auth.uid : clientIp(context));
+
+  const agg = await db.collection('users')
+    .where('role', '==', 'voter')
+    .where('status', '==', 'active')
+    .count()
+    .get();
+  return { activeVoters: agg.data().count || 0 };
 });
 
 // ---------------------------------------------------------------------
