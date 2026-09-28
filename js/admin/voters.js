@@ -111,8 +111,13 @@
 
   async function load() {
     const $loadError = document.getElementById('loadError');
+    // Both lists are independent: one wave instead of two sequential
+    // round-trips (matters most on high-latency connections).
+    const [snap, sSnap] = await Promise.all([
+      DB.collection('users').get(),
+      DB.collection('studentList').get().catch(function () { return null; })
+    ]);
     try {
-      const snap = await DB.collection('users').get();
       allUsers = snap.docs.map(function (doc) {
         const d = doc.data();
         return Object.assign({ uid: doc.id }, d);
@@ -126,10 +131,7 @@
       throw err;
     }
     render($search.value);
-    try {
-      const sSnap = await DB.collection('studentList').get();
-      allStudents = sSnap.docs.map(function (doc) { return doc.data(); });
-    } catch (e) { allStudents = []; }
+    allStudents = sSnap ? sSnap.docs.map(function (doc) { return doc.data(); }) : [];
     renderStudents($studentSearch ? $studentSearch.value : '');
   }
 
@@ -444,7 +446,7 @@
         '<option value="superadmin">Super Admin</option>';
     }
     plusActivateButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users'), DB.collection('studentList')], load); });
+    return load().then(function () { liveCollections([DB.collection('users'), DB.collection('studentList')], load, { minIntervalMs: 15000 }); });
   }).catch(function (err) {
     toast('Could not load voters: ' + friendlyError(err), 'error');
   });

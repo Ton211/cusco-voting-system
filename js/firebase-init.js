@@ -19,6 +19,17 @@ const FB_STORAGE = firebase.storage();
 const FB_FUNCTIONS = firebase.app().functions(FIREBASE_FUNCTIONS_REGION);
 
 // ----------------------------------------------------------------
+//  Firestore offline persistence (multi-tab safe).
+//  Repeat visits paint instantly from the local cache while the SDK
+//  syncs in the background — the single biggest perceived-speed win
+//  on slow connections. Read-only pages keep working offline.
+//  Failures (old browsers, private mode) fall back to memory cache.
+// ----------------------------------------------------------------
+try {
+  DB.enablePersistence({ synchronizeTabs: true }).catch(function () {});
+} catch (e) {}
+
+// ----------------------------------------------------------------
 //  Firebase App Check
 //  Only active once FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY is set.
 //  In debug mode (FIREBASE_APPCHECK_DEBUG = true / ?appcheck.debug=)

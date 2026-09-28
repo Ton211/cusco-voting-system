@@ -233,7 +233,9 @@
       liveRefs,
       function () {
         if (selectedElection) return loadElection(selectedElection.id, true);
-      }
+      },
+      // Staff view also watches the whole voter roster: coalesce bursts.
+      { minIntervalMs: 10000 }
     );
   }).catch(function (err) {
     toast('Could not load elections: ' + friendlyError(err), 'error');

@@ -215,7 +215,7 @@
     // Read-only staff can see the list but cannot add, import or edit.
     window.hideForReadOnly('#openAddBtn');
     window.hideForReadOnly('#openImportBtn');
-    return load().then(function () { liveCollections([DB.collection('studentList')], load); });
+    return load().then(function () { liveCollections([DB.collection('studentList')], load, { minIntervalMs: 15000 }); });
   }).catch(function (err) {
     toast('Could not load students: ' + friendlyError(err), 'error');
   });

@@ -170,7 +170,7 @@
     // View-only staff see numbers only: no quick actions, no open/close.
     window.hideForReadOnly('#nextStepsCard');
     window.hideForReadOnly('#manageElectionsBtn');
-    load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load); }).catch(function (err) {
+    load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load, { minIntervalMs: 15000 }); }).catch(function (err) {
       $list.innerHTML = '<p class="muted">Could not load dashboard data.</p>';
       toast('Could not load dashboard: ' + friendlyError(err), 'error');
     });

@@ -326,7 +326,10 @@
     return loadSelect().then(function () {
       liveCollections(
         [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes'), DB.collection('users').where('role', '==', 'voter')],
-        function () { if (selectedId) return buildReport(selectedId, true); }
+        function () { if (selectedId) return buildReport(selectedId, true); },
+        // Full voter roster re-downloads on every vote: at most one
+        // rebuild every 20s, silent in the background.
+        { minIntervalMs: 20000 }
       );
     });
   }).catch(function (err) {

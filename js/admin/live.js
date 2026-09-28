@@ -274,7 +274,10 @@
     });
     liveCollections(
       [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes')],
-      function () { return refresh().catch(function () {}); }
+      function () { return refresh().catch(function () {}); },
+      // Graphs stay near-realtime, but a burst of votes coalesces into
+      // one refresh every few seconds instead of a re-read per vote.
+      { minIntervalMs: 5000 }
     );
     countdownTimer = setInterval(tickCountdown, 1000);
     boundaryTimer = setInterval(watchBoundary, 15000);

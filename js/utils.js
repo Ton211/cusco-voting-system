@@ -177,10 +177,21 @@ if (typeof document !== 'undefined') {
 
 function liveCollections(refs, reload, opts) {
   const o = opts || {};
+  // Throttle knobs (all optional, defaults preserve old behaviour):
+  //  - debounceMs: coalesce rapid snapshot bursts into one refresh.
+  //  - idleMs: hold refreshes while the user just interacted.
+  //  - minIntervalMs: minimum gap between two reloads. Extra snapshot
+  //    events stay pending and land on a later tick instead of
+  //    re-downloading whole collections on every single write
+  //    (e.g. every vote re-pushing all voter docs to every open tab).
+  const debounceMs = o.debounceMs || 400;
+  const idleMs = o.idleMs || 1500;
+  const minIntervalMs = o.minIntervalMs || 0;
   let busy = false;
   let pending = false;
   let stopped = false;
   let debounce = null;
+  let lastRun = 0;
   const unsubs = [];
 
   function guardsBusy() {
@@ -193,7 +204,9 @@ function liveCollections(refs, reload, opts) {
 
   async function run() {
     if (busy || stopped) return;
+    if (Date.now() - lastRun < minIntervalMs) { pending = true; return; }
     busy = true;
+    lastRun = Date.now();
     try { await reload(); } catch (e) {}
     busy = false;
     if (pending && !guardsBusy()) { pending = false; run(); }
@@ -204,14 +217,16 @@ function liveCollections(refs, reload, opts) {
     if (busy || guardsBusy()) { pending = true; return; }
     // User just clicked / typed / tapped: hold the refresh until idle so
     // the DOM is never rebuilt mid-interaction (no swallowed clicks).
-    if (Date.now() - lastInteractAt < 1500) { pending = true; return; }
+    if (Date.now() - lastInteractAt < idleMs) { pending = true; return; }
+    if (Date.now() - lastRun < minIntervalMs) { pending = true; return; }
     if (debounce) return; // coalesce rapid bursts into one refresh
     debounce = setTimeout(function () {
       debounce = null;
       if (stopped) return;
       if (busy || guardsBusy()) { pending = true; return; }
+      if (Date.now() - lastRun < minIntervalMs) { pending = true; return; }
       run();
-    }, 400);
+    }, debounceMs);
   }
 
   (refs || []).forEach(function (ref) {
@@ -226,10 +241,12 @@ function liveCollections(refs, reload, opts) {
 
   // Safety net every 2s: apply anything deferred while a dialog was
   // open, the user was typing, or a click just happened — and catch any
-  // missed event. Refreshes only land once the user has been idle ~1.5s.
+  // missed event. Refreshes only land once the user has been idle ~1.5s
+  // and the min interval has passed.
   const timer = setInterval(function () {
     if (stopped || document.hidden) return;
-    if (pending && !guardsBusy() && Date.now() - lastInteractAt >= 1500) { pending = false; run(); }
+    if (Date.now() - lastRun < minIntervalMs) return;
+    if (pending && !guardsBusy() && Date.now() - lastInteractAt >= idleMs) { pending = false; run(); }
   }, 2000);
 
   function stop() {
