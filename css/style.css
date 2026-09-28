@@ -432,14 +432,14 @@ body[data-page="public"] .auth-page > * {
 .toast {
   --accent: #4f46e5;
   pointer-events: auto;
-  display: flex; align-items: flex-start; gap: 10px;
-  min-width: 280px; max-width: 360px;
-  padding: 12px 12px 14px 12px; border-radius: 12px;
-  background: rgba(17, 25, 46, 0.96); color: #f1f5f9;
+  display: flex; align-items: flex-start; gap: 12px;
+  min-width: 320px; max-width: 430px;
+  padding: 18px 18px 20px 18px; border-radius: 14px;
+  background: rgba(17, 25, 46, 0.97); color: #f1f5f9;
   border: 1px solid rgba(148, 163, 184, 0.25);
-  border-left: 4px solid var(--accent);
-  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 18px -6px var(--accent);
-  font-size: 13.5px; line-height: 1.45;
+  border-left: 5px solid var(--accent);
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 24px -6px var(--accent);
+  font-size: 15.5px; line-height: 1.5;
   position: relative; overflow: hidden;
   animation: toastPop .38s cubic-bezier(.21, 1.02, .55, 1.1);
   backdrop-filter: blur(6px);
@@ -448,10 +448,10 @@ body[data-page="public"] .auth-page > * {
 .toast-error { --accent: #ef4444; }
 .toast-info { --accent: #6366f1; }
 .toast-warn { --accent: #f59e0b; }
-.toast-ic { flex: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(148, 163, 184, 0.16); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
-.toast-ic svg { width: 17px; height: 17px; }
+.toast-ic { flex: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(148, 163, 184, 0.16); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.toast-ic svg { width: 20px; height: 20px; }
 .toast-body { flex: 1; min-width: 0; }
-.toast-title { font-weight: 800; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.toast-title { font-weight: 800; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
 .toast-msg { color: #e2e8f0; overflow-wrap: anywhere; }
 .toast-x { flex: none; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 17px; line-height: 1; padding: 2px 4px; border-radius: 6px; }
 .toast-x:hover { color: #fff; background: rgba(148, 163, 184, 0.15); }
