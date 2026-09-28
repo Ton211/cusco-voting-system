@@ -28,14 +28,13 @@ const db = admin.firestore();
 const inc = admin.firestore.FieldValue.increment;
 const serverNow = admin.firestore.FieldValue.serverTimestamp;
 
-const ROLES = ['voter', 'admin', 'admin_s', 'superadmin'];
+const ROLES = ['voter', 'admin', 'superadmin'];
 
-//  Staff accounts: admin (view-only), Admin(S) (view-only, fewer pages:
-//  no students/voters/users, no dashboard quick actions) and superadmin
-//  (full control). Former view-only roles (director / principal / dean /
-//  registrar / staff / user) can no longer be created or assigned; any
-//  leftover accounts with those roles can still be promoted or deleted
-//  via setUserRole / deleteUser below.
+//  Staff accounts: admin (view-only) and superadmin (full control).
+//  Removed roles (director / principal / dean / registrar / staff /
+//  user / admin_s) can no longer be created or assigned; any leftover
+//  accounts with those roles can still be promoted or deleted via
+//  setUserRole / deleteUser below.
 
 // ---------------------------------------------------------------------
 //  Optionally require a trusted App Check token on callable functions.

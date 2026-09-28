@@ -171,9 +171,6 @@
     window.hideForReadOnly('#nextStepsCard');
     load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load); }).catch(function (err) {
       $list.innerHTML = '<p class="muted">Could not load dashboard data.</p>';
-      if (/[?&]debug=1/.test(window.location.search)) {
-        $list.innerHTML = '<div class="alert alert-error">DEBUG dashboard load failed: ' + esc(friendlyError(err)) + ' (code: ' + esc((err && err.code) || '?') + ')</div>';
-      }
       toast('Could not load dashboard: ' + friendlyError(err), 'error');
     });
   });

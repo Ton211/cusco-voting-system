@@ -4,8 +4,9 @@
 //  with class "auth-hidden" and only becomes visible once access has
 //  been verified.
 //
-//  data-page="admin"  -> admin/superadmin + Admin(S)
-//                       (per-page limits enforced in admin-common.js)
+//  data-page="admin"  -> admin/superadmin only
+//                       (view-only roles removed; per-page limits
+//                       enforced in admin-common.js)
 //  data-page="voter"  -> voter only
 //  data-page="login"        -> shared login
 //  data-page="admin-login"  -> separate ADMIN portal login
@@ -14,43 +15,15 @@
 
 window.__auth = { user: null, role: null };
 
-// Admin(S): a limited admin. Uses the admin portal but may only see
-// dashboard (read-only, no quick actions), candidates, positions,
-// election, live, results, reports. Students, voters and users hidden.
-window.VIEWER_ROLES = ['admin_s'];
+// View-only roles removed: only admin/superadmin use the portal.
+// Kept as an empty list so isViewerRole() stays safe to call everywhere.
+window.VIEWER_ROLES = [];
 window.isViewerRole = function (role) {
   return window.VIEWER_ROLES.indexOf(role) !== -1;
 };
 
 (function () {
   const mode = document.body.dataset.page || 'public';
-
-  // ?debug=1: freeze redirects and print decisions on screen (no devtools
-  // needed). Used to diagnose login loops: each page shows what it would
-  // do plus a manual "Follow" link instead of navigating by itself.
-  var DEBUG = /[?&]debug=1/.test(window.location.search);
-  var debugRole = '?';
-  function dbg(msg, followUrl) {
-    if (!DEBUG) return;
-    try {
-      var el = document.getElementById('cusco-debug');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'cusco-debug';
-        el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#111;color:#0f0;font:13px/1.6 monospace;padding:12px;border-radius:8px;max-height:50vh;overflow:auto;white-space:pre-wrap;';
-        document.body.appendChild(el);
-      }
-      el.textContent += msg + '\n';
-      if (followUrl) {
-        var sep = followUrl.indexOf('?') === -1 ? '?' : '&';
-        var a = document.createElement('a');
-        a.href = followUrl + sep + 'debug=1';
-        a.textContent = 'Follow to ' + followUrl;
-        a.style.cssText = 'display:block;margin-top:8px;color:#ff0;font-weight:bold;';
-        el.appendChild(a);
-      }
-    } catch (e) {}
-  }
 
   // The staff portal is deliberately unadvertised (no link on the landing
   // page) so the admin login path is not trivially discoverable.
@@ -65,16 +38,10 @@ window.isViewerRole = function (role) {
   }
 
   function reveal() {
-    dbg('REVEAL page=' + mode + ' role=' + debugRole);
     document.body.classList.remove('auth-hidden');
   }
 
   function redirect(url) {
-    if (DEBUG) {
-      document.body.classList.remove('auth-hidden');
-      dbg('REDIRECT BLOCKED page=' + mode + ' role=' + debugRole + ' to=' + url, url);
-      return;
-    }
     // Loop breaker: if the browser bounces between pages several times
     // in a few seconds (almost always a stale cached copy of this file
     // fighting the new one), stop redirecting and say so instead of
@@ -114,7 +81,6 @@ window.isViewerRole = function (role) {
 
     AUTH.onAuthStateChanged(function (user) {
       if (!user) {
-        debugRole = 'none';
         if (mode === 'login' || mode === 'admin-login' || mode === 'public') {
           settle(null, null); reveal();
         }
@@ -149,7 +115,6 @@ window.isViewerRole = function (role) {
         // First-login password gate: voters flagged mustChangePassword
         // must set their own password before using the portal.
         function afterGate() {
-          debugRole = role || 'none';
           settle(user, role);
 
           if (mode === 'set-password') {
@@ -202,7 +167,6 @@ window.isViewerRole = function (role) {
         }
         afterGate();
       }).catch(function () {
-        debugRole = 'error';
         settle(user, null);
         reveal();
       });

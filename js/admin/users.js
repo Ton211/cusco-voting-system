@@ -23,9 +23,9 @@
   const $empty = document.getElementById('emptyState');
   const $search = document.getElementById('searchBox');
 
-  // Legacy view-only roles (staff/user): no longer assignable, but old
+  // Removed roles (staff/user/admin_s): no longer assignable, but old
   // accounts still appear here so a superadmin can promote or delete them.
-  var LEGACY_VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user'];
+  var LEGACY_VIEWER_ROLES = ['director', 'principal', 'dean', 'registrar', 'staff', 'user', 'admin_s'];
 
   function roleBadge(role) {
     if (role === 'superadmin') return '<span class="badge superadmin">Super Admin</span>';
@@ -71,7 +71,7 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').where('role', 'in', ['admin', 'admin_s', 'superadmin', 'staff', 'user']).get();
+    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user', 'admin_s']).get();
     allStaff = snap.docs.map(function (doc) {
       return Object.assign({ uid: doc.id }, doc.data());
     });
@@ -128,7 +128,7 @@
       document.getElementById('resetForm').reset();
       openModal('resetModal');
     } else if (btn.dataset.action === 'role') {
-      // Role toggle: legacy accounts and Admin(S) become full admin;
+      // Role toggle: removed-role accounts and Admin(S) become full admin;
       // admin becomes superadmin; superadmin steps back to admin.
       const next = u.role === 'superadmin' ? 'admin' : (u.role === 'admin' ? 'superadmin' : 'admin');
       const ok = await confirmDialog({ title: 'Change role', message: 'Set ' + u.fullName + ' as ' + next + '?', confirmText: 'Confirm' });
@@ -222,7 +222,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'admin_s', 'superadmin', 'staff', 'user'])], load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user', 'admin_s'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });

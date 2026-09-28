@@ -27,13 +27,6 @@ service cloud.firestore {
 
     // Only the Super Admin may change data. The plain admin role is
     // view-only: reads stay open, every write rule uses isSuperAdmin().
-    // Admin(S) is a limited admin: same read access, fewer pages
-    // (no students/voters/users, no dashboard quick actions).
-
-    // Admin(S): limited admin with the same read access as admin.
-    function isStaffViewer() {
-      return isSignedIn() && request.auth.token.role == 'admin_s';
-    }
 
     function isOwnUser(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -69,11 +62,11 @@ service cloud.firestore {
     // flag, or hand themselves a receipt.
     // ------------------------------------------------------------------
     match /users/{userId} {
-      allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
+      allow read: if isOwnUser(userId) || isAdmin();
       allow write: if false;
 
       match /receipts/{receiptId} {
-        allow read: if isOwnUser(userId) || isAdmin() || isStaffViewer();
+        allow read: if isOwnUser(userId) || isAdmin();
         allow write: if false; // only the createVote Cloud Function writes these
       }
     }
@@ -165,7 +158,7 @@ service cloud.firestore {
     }
 
     match /votes/{electionId} {
-      allow read: if isAdmin() || isStaffViewer() || (isVoter() && resultsReleased());
+      allow read: if isAdmin() || (isVoter() && resultsReleased());
       allow write: if false;
     }
 
