@@ -316,11 +316,11 @@ table.data tbody tr:hover { background: #f5f8fd; }
 /* margin:auto keeps the card vertically centered when there is spare
    room, but lets it stick to the top and scroll when the on-screen
    keyboard shrinks the visible area (align-items:center alone would
-   clip the top of the card instead). */
-.auth-page > * {
-  margin: auto;
-  transition: transform .28s ease;
-}
+   clip the top of the card instead).
+   NOTE: the margin:auto rule lives with .center-card below, using
+   higher specificity so it is not overridden by .center-card's
+   or .hero's own margin. */
+.auth-page > * { transition: transform .28s ease; }
 /* While the keyboard is open, reserve its height as bottom padding so
    the focused input scrolls fully above it without manual dragging,
    and nudge the card up SLIGHTLY (it stays near center, just lifted
@@ -353,6 +353,12 @@ body.keyboard-open[data-page="set-password"] > .center-card { transform: transla
   box-shadow: var(--shadow); padding: 30px 30px 26px;
 }
 .center-card.wide { max-width: 640px; }
+/* Centering for login cards: higher specificity so margin:auto wins
+   over .center-card's / .hero's own margin regardless of rule order.
+   Centered at rest; the keyboard-open nudge above only lifts it
+   slightly while typing. */
+.auth-page > .center-card,
+.auth-page > .hero { margin: auto; }
 .center-logo { font-weight: 800; letter-spacing: .06em; text-align: center; }
 .center-logo h1 { font-size: 22px; }
 .center-logo p { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .16em; margin-top: 4px; }
