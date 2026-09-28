@@ -1,7 +1,8 @@
 // =====================================================================
 // Shared admin panel chrome: sidebar name, active nav, logout.
-// (View-only staff roles were removed; only admin/superadmin use the
-// portal now. The viewer-trim below is kept inert for safety.)
+// Admin(S) is a limited admin: dashboard (no quick actions), candidates,
+// positions, election, live, results, reports. Students, voters and
+// users are hidden from it.
 // =====================================================================
 
 // Pages a view-only staff member may open. Everything else in the
@@ -43,7 +44,7 @@ window.hideForReadOnly = function (sel) {
     if (nameEl) {
       const full = a.user.displayName || a.user.email || 'Admin';
       const short = String(full).split(' ')[0] || 'Admin';
-      const label = String(a.role).charAt(0).toUpperCase() + String(a.role).slice(1);
+      const label = a.role === 'admin_s' ? 'Admin(S)' : (String(a.role).charAt(0).toUpperCase() + String(a.role).slice(1));
       nameEl.innerHTML = '<strong>' + esc(short) + '</strong><span>' + esc(label) + '</span>';
     }
 

@@ -31,6 +31,7 @@ let voterB;
 let adminU; // plain admin: view-only, like viewerD
 let superU; // superadmin: the only writer
 let viewerD; // director: removed view-only role (reads now denied)
+let adminS; // Admin(S): limited admin (reads like admin, writes blocked)
 
 const now = new Date();
 const ELECTION = {
@@ -113,6 +114,7 @@ async function main() {
   adminU = env.authenticatedContext('adminU', { role: 'admin' }).firestore();
   superU = env.authenticatedContext('superU', { role: 'superadmin' }).firestore();
   viewerD = env.authenticatedContext('viewerD', { role: 'director' }).firestore();
+  adminS = env.authenticatedContext('adminS', { role: 'admin_s' }).firestore();
 
   // ------------------------------------------------------------------
   //  1. Unauthenticated user attempts to access voters
@@ -379,6 +381,22 @@ async function main() {
     await assertFails(viewerD.collection('positions').doc(eId + '_0').delete());
     await assertFails(viewerD.collection('settings').doc('resultsVisibility').update({ hideUntilClose: false, electionId: eId, updatedAt: now }));
     await assertFails(viewerD.collection('studentList').doc('ADM001').get());
+  });
+
+  await test('X9 Admin(S) reads like admin (dashboard/reports) but cannot write', async () => {
+    await assertSucceeds(adminS.collection('users').doc('voterA').get());
+    await assertSucceeds(adminS.collection('users').where('role', '==', 'voter').get());
+    await assertSucceeds(adminS.collection('votes').doc(eId).get());
+    await assertSucceeds(adminS.collection('elections').doc(eId).get());
+    await assertSucceeds(adminS.collection('positions').doc(eId + '_0').get());
+    await assertSucceeds(adminS.collection('candidates').doc('cand_1_ok').get());
+    await assertFails(adminS.collection('users').doc('voterA').update({ status: 'inactive' }));
+    await assertFails(adminS.collection('votes').doc(eId).set({ totalVotes: 1 }));
+    await assertFails(adminS.collection('candidates').doc('cand_1_ok').update({ name: 'Hax' }));
+    await assertFails(adminS.collection('positions').doc(eId + '_0').delete());
+    await assertFails(adminS.collection('elections').doc(eId).update({ status: 'closed' }));
+    await assertFails(adminS.collection('settings').doc('resultsVisibility').update({ hideUntilClose: false, electionId: eId, updatedAt: now }));
+    await assertFails(adminS.collection('studentList').doc('ADM001').get());
   });
 
   // ------------------------------------------------------------------

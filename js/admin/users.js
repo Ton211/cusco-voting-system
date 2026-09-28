@@ -29,6 +29,7 @@
 
   function roleBadge(role) {
     if (role === 'superadmin') return '<span class="badge superadmin">Super Admin</span>';
+    if (role === 'admin_s') return '<span class="badge scheduled">Admin(S)</span>';
     if (LEGACY_VIEWER_ROLES.indexOf(role) !== -1) {
       const label = String(role).charAt(0).toUpperCase() + String(role).slice(1);
       return '<span class="badge scheduled">' + esc(label) + '</span>';
@@ -70,7 +71,7 @@
   }
 
   async function load() {
-    const snap = await DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user']).get();
+    const snap = await DB.collection('users').where('role', 'in', ['admin', 'admin_s', 'superadmin', 'staff', 'user']).get();
     allStaff = snap.docs.map(function (doc) {
       return Object.assign({ uid: doc.id }, doc.data());
     });
@@ -127,8 +128,9 @@
       document.getElementById('resetForm').reset();
       openModal('resetModal');
     } else if (btn.dataset.action === 'role') {
-      // Legacy view-only accounts can only be promoted to full admin here.
-      const next = LEGACY_VIEWER_ROLES.indexOf(u.role) !== -1 ? 'admin' : (u.role === 'superadmin' ? 'admin' : 'superadmin');
+      // Role toggle: legacy accounts and Admin(S) become full admin;
+      // admin becomes superadmin; superadmin steps back to admin.
+      const next = u.role === 'superadmin' ? 'admin' : (u.role === 'admin' ? 'superadmin' : 'admin');
       const ok = await confirmDialog({ title: 'Change role', message: 'Set ' + u.fullName + ' as ' + next + '?', confirmText: 'Confirm' });
       if (!ok) return;
       try {
@@ -220,7 +222,7 @@
       return;
     }
     plusButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'superadmin', 'staff', 'user'])], load); });
+    return load().then(function () { liveCollections([DB.collection('users').where('role', 'in', ['admin', 'admin_s', 'superadmin', 'staff', 'user'])], load); });
   }).catch(function (err) {
     toast('Could not load users: ' + friendlyError(err), 'error');
   });
