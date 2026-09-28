@@ -26,11 +26,14 @@
       '<option value="">Select an election…</option>' +
       elections.map(function (e) { return '<option value="' + esc(e.id) + '">' + esc(e.name) + '</option>'; }).join('');
 
-    if (settingsSnap && settingsSnap.exists) {
-      const s = settingsSnap.data();
-      $hideToggle.checked = s.hideUntilClose !== false;
-    } else {
-      $hideToggle.checked = true;
+    // No visibility toggle on the student portal copy of this page.
+    if ($hideToggle) {
+      if (settingsSnap && settingsSnap.exists) {
+        const s = settingsSnap.data();
+        $hideToggle.checked = s.hideUntilClose !== false;
+      } else {
+        $hideToggle.checked = true;
+      }
     }
 
     // Auto pick so results show at once: the election from ?election=
@@ -52,6 +55,9 @@
     }
   }
 
+  // Visibility toggle exists on the admin page only; the student
+  // portal copy of this page has no such control.
+  if ($hideToggle) {
   $hideToggle.addEventListener('change', async function () {
     try {
       await DB.collection('settings').doc('resultsVisibility').set({
@@ -65,6 +71,7 @@
       $hideToggle.checked = !$hideToggle.checked;
     }
   });
+  }
 
   // ---------------------------------------------------------------
   // Loading results
@@ -72,12 +79,16 @@
   async function loadElection(electionId, silent) {
     if (!silent) $body.innerHTML = '<div class="empty">Loading…</div>';
 
+    // This same file powers the student portal Results page: voters
+    // cannot read the voter roster, so the users query is staff-only
+    // and their turnout base comes from getPublicStats instead.
+    const isVoterView = window.__auth && window.__auth.role === 'voter';
     const [electionSnap, positionsSnap, candidatesSnap, votesSnap, votersSnap] = await Promise.all([
       DB.collection('elections').doc(electionId).get(),
       DB.collection('positions').where('electionId', '==', electionId).get(),
       DB.collection('candidates').where('electionId', '==', electionId).get(),
       DB.collection('votes').doc(electionId).get().catch(function () { return null; }),
-      DB.collection('users').where('role', '==', 'voter').get().catch(function () { return null; })
+      isVoterView ? null : DB.collection('users').where('role', '==', 'voter').get().catch(function () { return null; })
     ]);
 
     if (!electionSnap.exists) { $body.innerHTML = '<div class="empty">Election not found.</div>'; return; }
@@ -98,7 +109,13 @@
     const votes = votesSnap && votesSnap.exists ? (votesSnap.data() || {}) : {};
     const results = votes.results || {};
     const totalVotes = votes.totalVotes || 0;
-    const totalVoters = votersSnap ? votersSnap.size : 0;
+    let totalVoters = votersSnap ? votersSnap.size : 0;
+    if (isVoterView) {
+      try {
+        const stats = await FB_FUNCTIONS.httpsCallable('getPublicStats')({});
+        totalVoters = (stats.data && stats.data.activeVoters) || 0;
+      } catch (e) { totalVoters = 0; }
+    }
     const turnout = totalVoters ? Math.round((totalVotes / totalVoters) * 100) : 0;
 
     // Summary stats
@@ -203,11 +220,17 @@
 
   window.authPromise.then(async function () {
     // View-only staff can see results but cannot change visibility.
-    window.hideForReadOnly('#visibilityToggleWrap');
+    // (Admin helper exists on admin pages only, never the portal.)
+    if (window.hideForReadOnly) window.hideForReadOnly('#visibilityToggleWrap');
     await loadSelect();
     // Real-time: votes, candidates, or settings changes re-render at once.
+    // The roster query is staff-only; voters cannot listen to it.
+    const liveRefs = [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes'), DB.collection('settings').doc('resultsVisibility')];
+    if (!(window.__auth && window.__auth.role === 'voter')) {
+      liveRefs.splice(4, 0, DB.collection('users').where('role', '==', 'voter'));
+    }
     liveCollections(
-      [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes'), DB.collection('users').where('role', '==', 'voter'), DB.collection('settings').doc('resultsVisibility')],
+      liveRefs,
       function () {
         if (selectedElection) return loadElection(selectedElection.id, true);
       }

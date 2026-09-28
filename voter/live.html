@@ -18,8 +18,8 @@
     </header>
 
     <main class="voter-main">
-      <div class="center-card wide">
-        <div class="page-head" style="margin-bottom:14px;">
+      <div class="content" style="width:100%;">
+        <div class="page-head">
           <div>
             <h1>Live Voting</h1>
             <p id="liveStatus">Checking for an open election...</p>
@@ -48,6 +48,7 @@
   <script src="/js/auth-guard.js"></script>
   <script src="/js/voter-common.js"></script>
   <script src="/js/voter/voter-shared.js"></script>
-  <script src="/js/voter/live.js"></script>
+  <!-- Same board code as the admin Live page: one source of truth. -->
+  <script src="/js/admin/live.js"></script>
 </body>
 </html>

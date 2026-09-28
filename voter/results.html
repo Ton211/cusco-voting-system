@@ -18,8 +18,13 @@
     </header>
 
     <main class="voter-main">
-      <div class="center-card wide" id="resultsCard">
-        <div class="center-logo mb-12"><p>ELECTION OUTCOME</p><h1>Results</h1></div>
+      <div class="content" style="width:100%;">
+        <div class="page-head">
+          <div>
+            <h1>Election Results</h1>
+          </div>
+        </div>
+
         <div class="card">
           <div class="form-group" style="margin-bottom:0;">
             <label for="resultsElection">Election</label>
@@ -28,7 +33,10 @@
             </select>
           </div>
         </div>
-        <div id="resultsBody"><div class="empty">Select an election above to view results.</div></div>
+
+        <div id="resultsBody">
+          <div class="empty">Select an election above to view results.</div>
+        </div>
       </div>
     </main>
   </div>
@@ -45,6 +53,7 @@
   <script src="/js/auth-guard.js"></script>
   <script src="/js/voter-common.js"></script>
   <script src="/js/voter/voter-shared.js"></script>
-  <script src="/js/voter/results.js"></script>
+  <!-- Same results code as the admin Results page: one source of truth. -->
+  <script src="/js/admin/results.js"></script>
 </body>
 </html>
