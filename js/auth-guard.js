@@ -25,6 +25,12 @@ window.isViewerRole = function (role) {
 (function () {
   const mode = document.body.dataset.page || 'public';
 
+  // Every page starts at the top: never restore a mid-list scroll
+  // position from the previous page (phones especially).
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
+  window.scrollTo(0, 0);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) window.scrollTo(0, 0); });
+
   // The staff portal is deliberately unadvertised (no link on the landing
   // page) so the admin login path is not trivially discoverable.
   const VOTER_LOGIN = '/';
@@ -39,6 +45,7 @@ window.isViewerRole = function (role) {
 
   function reveal() {
     document.body.classList.remove('auth-hidden');
+    window.scrollTo(0, 0);
   }
 
   function redirect(url) {
