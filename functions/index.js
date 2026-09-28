@@ -112,7 +112,7 @@ function rateLimit(name, key) {
 }
 
 function HttpsError(code, message) {
-  return new fn.https.HttpsError(code, message);
+  return new functions.https.HttpsError(code, message);
 }
 
 function requireAuth(context) {
