@@ -30,6 +30,26 @@
 
   // Login form
   const loginForm = document.getElementById('landingLoginForm');
+  // After a fresh sign-in the public-page guard only reveals (it never
+  // routes), and the top-of-file redirect already ran at page load —
+  // so route explicitly here. Without this the button sticks forever
+  // on "Logging in…" even with correct credentials.
+  async function goAfterLogin() {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Log In';
+    try {
+      const user = AUTH.currentUser;
+      const idr = user ? await withTimeout(user.getIdTokenResult(), 10000, 'Sign in') : null;
+      const role = idr && idr.claims ? idr.claims.role : null;
+      if (role === 'admin' || role === 'superadmin' || window.isViewerRole(role)) {
+        location.replace('/admin/dashboard.html');
+      } else {
+        location.replace('/voter/dashboard.html');
+      }
+    } catch (e) {
+      location.replace('/voter/dashboard.html');
+    }
+  }
   const admInput = document.getElementById('landingAdm');
   const pwInput = document.getElementById('landingPassword');
   const loginBtn = document.getElementById('landingLoginBtn');
@@ -123,7 +143,8 @@
         try {
           await withTimeout(AUTH.signInWithEmailAndPassword(email, password), 15000, 'Sign in');
           if (bgCheck && bgCheck.catch) bgCheck.catch(function () {});
-          return; // signed in: auth-guard / explicit flow routes from here
+          await goAfterLogin();
+          return; // signed in and routed to the right portal
         } catch (e) { signErr = e; }
         // While Auth is throttling this device, never fire retries: they
         // cannot succeed and only extend the block. Just say to wait.
@@ -149,7 +170,7 @@
             break;
           } catch (e2) { last = e2; }
         }
-        if (ok) return;
+        if (ok) { await goAfterLogin(); return; }
         const st = await bgCheck;
         if (st && st.exists && !st.alreadyRegistered) { showFirstTimer(); return; }
         if (st && !st.exists) {
@@ -168,6 +189,7 @@
       // Email-style login (or staff): straight to Auth, no pre-check.
       try {
         await withTimeout(AUTH.signInWithEmailAndPassword(email, password), 15000, 'Sign in');
+        await goAfterLogin();
       } catch (err) {
         toast(friendlyError(err), 'error');
         loginBtn.disabled = false;
