@@ -359,6 +359,23 @@ body.keyboard-open[data-page="set-password"] > .center-card { transform: transla
    slightly while typing. */
 .auth-page > .center-card,
 .auth-page > .hero { margin: auto; }
+/* Student-side entrance: the login panel slides in from the side on
+   page load, echoing the toast pop-out. Scoped to student pages only
+   (login + landing). No fill-forwards, so once the entrance finishes
+   the card falls back to its normal styles (including the slight
+   keyboard-open lift while typing). */
+@keyframes loginSlideIn {
+  from { opacity: 0; transform: translateX(56px); }
+  to { opacity: 1; transform: none; }
+}
+body[data-page="login"] .auth-page > *,
+body[data-page="public"] .auth-page > * {
+  animation: loginSlideIn .45s cubic-bezier(.21, 1.02, .55, 1.1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-page="login"] .auth-page > *,
+  body[data-page="public"] .auth-page > * { animation: none; }
+}
 .center-logo { font-weight: 800; letter-spacing: .06em; text-align: center; }
 .center-logo h1 { font-size: 22px; }
 .center-logo p { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .16em; margin-top: 4px; }
