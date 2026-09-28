@@ -482,9 +482,11 @@ exports.importStudents = fn.https.onCall(async (data, context) => {
 // ---------------------------------------------------------------------
 //  updateStudent / deleteStudent (Super Admin only)
 //  Adm number is the doc id and stays immutable; only the name is edited.
-//  Deleting a student removes the whitelist entry even if they already
-//  registered; their voter login stays active (deactivate it from the
-//  Voters page if they should no longer vote).
+//  Deleting a student removes them permanently: the whitelist entry plus
+//  their voter login (Auth account, profile and receipts) when they
+//  already registered. Add them again later to let them return.
+//  Anonymous ballots already cast stay in the tallies by design: a cast
+//  vote cannot be traced back to a voter.
 // ---------------------------------------------------------------------
 exports.updateStudent = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
@@ -514,8 +516,41 @@ exports.deleteStudent = fn.https.onCall(async (data, context) => {
   const ref = db.collection('studentList').doc(admDocId(adm));
   const snap = await ref.get();
   if (!snap.exists) throw HttpsError('not-found', 'Student not found.');
+  const existing = snap.data() || {};
+
+  // Permanent removal: if they already registered, delete the voter login
+  // too so nothing of them remains in the system.
+  let removedVoter = false;
+  let uid = existing.registeredUid ? String(existing.registeredUid) : null;
+  if (!uid) {
+    const byVoterId = await db.collection('users').where('voterId', '==', adm).limit(1).get();
+    if (!byVoterId.empty) {
+      uid = byVoterId.docs[0].id;
+    } else {
+      const byAdm = await db.collection('users').where('admNumber', '==', adm).limit(1).get();
+      if (!byAdm.empty) uid = byAdm.docs[0].id;
+    }
+  }
+  if (uid) {
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (err) {
+      if (err.code !== 'auth/user-not-found') {
+        throw HttpsError('internal', 'Could not delete the voter login: ' + err.message);
+      }
+    }
+    const receipts = await db.collection('users').doc(uid).collection('receipts').get();
+    if (!receipts.empty) {
+      const batch = db.batch();
+      receipts.docs.forEach(function (d) { batch.delete(d.ref); });
+      await batch.commit();
+    }
+    await db.collection('users').doc(uid).delete();
+    removedVoter = true;
+  }
+
   await ref.delete();
-  return { ok: true };
+  return { ok: true, removedVoter: removedVoter };
 });
 
 // ---------------------------------------------------------------------

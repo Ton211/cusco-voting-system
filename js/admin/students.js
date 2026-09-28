@@ -168,11 +168,11 @@
         document.getElementById('editStudentName').value = (s && s.fullName) || '';
         openModal('editStudentModal');
       } else if (btn.dataset.action === 'del') {
-        const ok = await confirmDialog({ title: 'Delete student', message: 'Delete ' + adm + ' from the student list?', confirmText: 'Delete', danger: true });
+        const ok = await confirmDialog({ title: 'Delete student', message: 'Permanently delete ' + adm + ' from the system, including their voter login if they registered? Add them again later to let them return.', confirmText: 'Delete', danger: true });
         if (!ok) return;
         try {
-          await deleteStudentFn({ admNumber: adm });
-          toast('Student deleted.', 'success');
+          const res = await deleteStudentFn({ admNumber: adm });
+          toast(res && res.removedVoter ? 'Student and voter login deleted.' : 'Student deleted.', 'success');
           await load();
         } catch (err) {
           toast(callFriendly(err).message, 'error');
