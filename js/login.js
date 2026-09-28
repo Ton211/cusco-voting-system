@@ -155,6 +155,8 @@
   const newPwInput = document.getElementById('newPassword');
   const confirmPwInput = document.getElementById('confirmPassword');
   const setupBtn = document.getElementById('setupRegisterBtn');
+  const setupBackBtn = document.getElementById('setupBackBtn');
+  const loginLinks = document.getElementById('loginLinks');
   const setupBox = document.getElementById('setupBox');
   let pendingAdm = '';
   let pendingEmail = '';
@@ -180,7 +182,11 @@
     if (st && st.exists && !st.alreadyRegistered) {
       pendingAdm = adm;
       pendingEmail = admEmail;
+      // Verified first-timer: swap the login form away so only the
+      // set-password block shows.
       if (setupWrap) setupWrap.classList.remove('hidden');
+      form.style.display = 'none';
+      if (loginLinks) loginLinks.style.display = 'none';
       toast('First time here? Set your password below to register as a voter.', 'info');
       if (newPwInput) newPwInput.focus();
       return;
@@ -190,6 +196,22 @@
       return;
     }
     toast(friendlyError(lastErr), 'error');
+  }
+
+  // Back out of first-time setup (e.g. wrong adm typed): bring the
+  // login form back and forget the pending adm.
+  function restoreLoginForm() {
+    pendingAdm = '';
+    pendingEmail = '';
+    if (setupWrap) setupWrap.classList.add('hidden');
+    form.style.display = '';
+    if (loginLinks) loginLinks.style.display = '';
+    passwordInput.value = '';
+    emailInput.focus();
+  }
+
+  if (setupBackBtn) {
+    setupBackBtn.addEventListener('click', restoreLoginForm);
   }
 
   if (setupForm) {
@@ -215,7 +237,7 @@
         await AUTH.signInWithEmailAndPassword(pendingEmail, np);
       } catch (err) {
         if (alreadyExistsErr(err)) {
-          if (setupWrap) setupWrap.classList.add('hidden');
+          restoreLoginForm();
           showError('Already registered. Please log in with your adm number and password.');
         } else {
           showSetup(friendlyError(err), true);
