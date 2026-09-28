@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings | CUSCO Voting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin" class="auth-hidden">
+
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand brand_with_logo"><img src="/images/cusco_logo.png" alt="CUSCO College crest" class="logo_img" width="34" height="34"><div class="brand_text">CUSCO<span>Voting System</span></div></div>
+      <nav>
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/students.html">Students</a>
+        <a href="/admin/voters.html">Voters</a>
+        <a href="/admin/candidates.html">Candidates</a>
+        <a href="/admin/positions.html">Position</a>
+        <a href="/admin/elections.html">Election</a>
+        <a href="/admin/live.html">Live</a>
+        <a href="/admin/results.html">Results</a>
+        <a href="/admin/reports.html">Reports</a>
+        <a href="/admin/users.html">Users</a>
+        <a href="/admin/settings.html">Settings</a>
+      </nav>
+      <div class="sidebar-user">
+        <div id="sidebarName"></div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Settings</h1>
+          <p class="muted text-sm">System preferences and maintenance.</p>
+        </div>
+      </div>
+
+      <div class="card" id="overviewCard">
+        <div class="card-title"><span>System overview</span></div>
+        <div class="stat-grid mb-12">
+          <div class="stat"><div class="num" id="stElections">—</div><div class="label">Elections</div></div>
+          <div class="stat"><div class="num" id="stPositions">—</div><div class="label">Positions</div></div>
+          <div class="stat"><div class="num" id="stCandidates">—</div><div class="label">Candidates</div></div>
+          <div class="stat"><div class="num green" id="stVoters">—</div><div class="label">Registered Voters</div></div>
+          <div class="stat"><div class="num" id="stStudents">—</div><div class="label">Student List</div></div>
+          <div class="stat"><div class="num amber" id="stVotes">—</div><div class="label">Vote Tallies</div></div>
+        </div>
+        <p class="muted text-sm">Cloud backend: Firebase (us-central1). Only a Super Admin can change data.</p>
+      </div>
+
+      <div class="card" id="passwordCard">
+        <div class="card-title"><span>Change my password</span></div>
+        <form id="pwForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="pwNew">New password</label>
+              <input class="input" type="password" id="pwNew" minlength="6" required autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label for="pwConfirm">Confirm new password</label>
+              <input class="input" type="password" id="pwConfirm" minlength="6" required autocomplete="new-password">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary" id="pwBtn">Update Password</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" id="aliasCard">
+        <div class="card-title"><span>Staff username aliases</span><span class="muted text-sm">Super Admin</span></div>
+        <p class="muted text-sm mb-12">Map a short staff-portal username (e.g. CUSCO) to a staff email. Passwords stay in Firebase Auth.</p>
+        <form id="aliasForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="aliasUsername">Username</label>
+              <input class="input" id="aliasUsername" placeholder="e.g. cusco" required>
+            </div>
+            <div class="form-group">
+              <label for="aliasEmail">Staff email</label>
+              <input class="input" type="email" id="aliasEmail" placeholder="staff@example.com" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-outline" id="aliasBtn">Save Alias</button>
+          </div>
+        </form>
+        <div class="table-wrap mt-16">
+          <table class="data">
+            <thead><tr><th>Username</th><th>Email</th></tr></thead>
+            <tbody id="aliasListBody"></tbody>
+          </table>
+          <div class="empty hidden" id="aliasEmpty">No aliases yet.</div>
+        </div>
+      </div>
+
+      <div class="card" id="dangerZone" style="border-color: var(--danger);">
+        <div class="card-title"><span>Danger zone</span><span class="muted text-sm">Super Admin</span></div>
+        <p class="text-sm mb-12">Reset wipes <strong>everything</strong> and starts the system new: all elections, positions, candidates, vote tallies, the student list and every voter account (login + profile + receipts).</p>
+        <p class="text-sm mb-12"><strong>Kept:</strong> admin/superadmin staff accounts and staff username aliases, so nobody is locked out.</p>
+        <p class="muted text-sm mb-12" id="wipeSummary">Loading what will be wiped…</p>
+        <button type="button" class="btn btn-danger" id="resetBtn">Reset Entire System</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/firebase-init.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth-guard.js"></script>
+  <script src="/js/admin-common.js"></script>
+  <script src="/js/admin/settings.js"></script>
+</body>
+</html>

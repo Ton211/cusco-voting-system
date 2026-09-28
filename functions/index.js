@@ -84,6 +84,7 @@ const RATE_LIMITS = {
   setUserRole: { windowMs: 60 * 60 * 1000, max: 30 },
   updateUser: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteUser: { windowMs: 60 * 60 * 1000, max: 30 },
+  resetSystem: { windowMs: 60 * 60 * 1000, max: 5 },
   saveElection: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteElection: { windowMs: 60 * 60 * 1000, max: 30 },
   bootstrapSuperAdmin: { windowMs: 60 * 60 * 1000, max: 3 }
@@ -742,6 +743,78 @@ exports.deleteUser = fn.https.onCall(async (data, context) => {
   }
   await db.collection('users').doc(uid).delete();
   return { ok: true };
+});
+
+// ---------------------------------------------------------------------
+//  resetSystem  (Super Admin only): factory reset. Wipes every election,
+//  position, candidate, vote tally, student-list entry and voter account
+//  (Auth login + profile + receipts) so the system starts new. Staff
+//  accounts (admin/superadmin) and staff username aliases are kept so
+//  nobody is locked out. Tallies vanish with the votes (a cast ballot
+//  cannot be traced back to a voter). Requires { confirm: 'RESET' }.
+// ---------------------------------------------------------------------
+exports.resetSystem = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('resetSystem', context.auth ? context.auth.uid : clientIp(context));
+  requireSuperAdmin(context);
+  if (String((data && data.confirm) || '') !== 'RESET') {
+    throw HttpsError('failed-precondition', 'Type RESET to confirm a full system reset.');
+  }
+
+  const counts = { elections: 0, positions: 0, candidates: 0, votes: 0, students: 0, voters: 0, receipts: 0 };
+
+  async function wipeCollection(colRef) {
+    const SIZE = 400;
+    let n = 0;
+    for (;;) {
+      const snap = await colRef.limit(SIZE).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      snap.docs.forEach(function (d) { batch.delete(d.ref); n++; });
+      await batch.commit();
+      if (snap.size < SIZE) break;
+    }
+    return n;
+  }
+
+  // Voters first (login + profile + receipts); staff accounts untouched.
+  for (;;) {
+    const snap = await db.collection('users').where('role', '==', 'voter').limit(400).get();
+    if (snap.empty) break;
+    for (const doc of snap.docs) {
+      const uid = doc.id;
+      try {
+        await admin.auth().deleteUser(uid);
+      } catch (err) {
+        if (err.code !== 'auth/user-not-found') {
+          throw HttpsError('internal', 'Could not delete a voter login: ' + err.message);
+        }
+      }
+      const receipts = await db.collection('users').doc(uid).collection('receipts').get();
+      if (!receipts.empty) {
+        const rb = db.batch();
+        receipts.docs.forEach(function (d) { rb.delete(d.ref); counts.receipts++; });
+        await rb.commit();
+      }
+      await db.collection('users').doc(uid).delete();
+      counts.voters++;
+    }
+  }
+
+  counts.elections = await wipeCollection(db.collection('elections'));
+  counts.positions = await wipeCollection(db.collection('positions'));
+  counts.candidates = await wipeCollection(db.collection('candidates'));
+  counts.votes = await wipeCollection(db.collection('votes'));
+  counts.students = await wipeCollection(db.collection('studentList'));
+
+  // Results visibility back to default (hidden until an election closes).
+  await db.collection('settings').doc('resultsVisibility').set({
+    hideUntilClose: true,
+    electionId: null,
+    updatedAt: serverNow()
+  });
+
+  return { ok: true, counts: counts };
 });
 
 // ---------------------------------------------------------------------
