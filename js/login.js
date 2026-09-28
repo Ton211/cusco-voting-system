@@ -130,6 +130,7 @@
     }
   });
 
+  if (forgotLink) {
   forgotLink.addEventListener('click', async function (e) {
     e.preventDefault();
     const username = emailInput.value.trim();
@@ -148,6 +149,7 @@
       showError(friendlyError(err));
     }
   });
+  }
 
   // ---------------------------------------------------------------
   // Register as voter (whitelist check against admin student list)

@@ -317,12 +317,18 @@ table.data tbody tr:hover { background: #f5f8fd; }
    room, but lets it stick to the top and scroll when the on-screen
    keyboard shrinks the visible area (align-items:center alone would
    clip the top of the card instead). */
-.auth-page > * { margin: auto; }
+.auth-page > * {
+  margin: auto;
+  transition: transform .28s ease;
+}
 /* While the keyboard is open, reserve its height as bottom padding so
-   the focused input scrolls fully above it without manual dragging. */
+   the focused input scrolls fully above it without manual dragging,
+   and nudge the card up SLIGHTLY (it stays near center, just lifted
+   enough to clear the keyboard). */
 body.keyboard-open .auth-page {
   padding-bottom: calc(var(--kb-height, 0px) + 24px);
 }
+body.keyboard-open .auth-page > * { transform: translateY(-5svh); }
 /* Set-password page uses an inline flex body instead of .auth-page:
    same treatment so its card lifts above the keyboard too. */
 body[data-page="set-password"] {
@@ -333,10 +339,14 @@ body[data-page="set-password"] {
   align-items: flex-start !important;
   scroll-padding-bottom: calc(var(--kb-height, 0px) + 24px);
 }
-body[data-page="set-password"] > .center-card { margin: auto; }
+body[data-page="set-password"] > .center-card {
+  margin: auto;
+  transition: transform .28s ease;
+}
 body.keyboard-open[data-page="set-password"] {
   padding-bottom: calc(var(--kb-height, 0px) + 24px);
 }
+body.keyboard-open[data-page="set-password"] > .center-card { transform: translateY(-5svh); }
 .center-card {
   width: 100%; max-width: 460px; margin: 0 auto;
   background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--primary); border-radius: 14px;

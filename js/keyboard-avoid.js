@@ -1,19 +1,16 @@
 // =====================================================================
-//  Keyboard avoidance: lift the login area above the on-screen keyboard
-//  so the user never has to scroll manually to see what they type.
+//  Keyboard avoidance: nudge the login area up SLIGHTLY when the
+//  on-screen keyboard appears, so the user sees what they type.
 //
-//  How it works:
-//  - On focusin of any input/textarea/select, adds body.keyboard-open
-//    and scrolls the focused field (and its card) into view above the
-//    keyboard after a short delay for the keyboard animation.
-//  - Tracks window.visualViewport resize to measure the keyboard height
-//    and exposes it as --kb-height (used as bottom padding on .auth-page).
-//  - On focusout / keyboard dismiss, clears the offset.
-//  No dependencies. Safe to include on any page.
+//  Resting state: the login panel stays vertically centered.
+//  On focus: the card lifts just a little (CSS translate + a minimal
+//  scroll, only if the focused field would otherwise sit under the
+//  keyboard). Nothing jumps to the top or center of the screen.
 // =====================================================================
 (function () {
   var SCROLL_DELAY = 120;
   var VIEWPORT_DELAY = 60;
+  var EDGE_GAP = 16;
   var scrollTimer = null;
   var viewportTimer = null;
 
@@ -25,35 +22,44 @@
     return null;
   }
 
-  function scrollFieldIntoView(field) {
+  // Scroll the SMALLEST distance needed to keep the focused field
+  // visible above the keyboard. If it is already visible, do nothing
+  // (the CSS translate alone gives the slight lift).
+  function nudgeFieldIntoView(field) {
     var target = field || activeField();
     if (!target) return;
     try {
-      // Center the field in the visible area; block:'center' keeps it
-      // clear of both the top bar and the keyboard.
-      target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-    } catch (e) {
-      try { target.scrollIntoView(); } catch (e2) {}
-    }
-    // Extra nudge for wrappers that scroll (.auth-page): ensure the
-    // whole card/form row is visible, not just the input edge.
-    var scroller = target.closest && target.closest('.auth-page');
-    if (scroller) {
-      setTimeout(function () {
-        try {
-          var r = target.getBoundingClientRect();
-          var sr = scroller.getBoundingClientRect();
-          var overflow = r.bottom - sr.bottom + 16;
-          if (overflow > 0) scroller.scrollTop += overflow;
-        } catch (e) {}
-      }, SCROLL_DELAY + 120);
-    }
+      var rect = target.getBoundingClientRect();
+      var vv = window.visualViewport;
+      var visibleTop = (vv ? vv.offsetTop : 0) + 8;
+      var visibleBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - EDGE_GAP;
+      var delta = 0;
+      if (rect.bottom > visibleBottom) {
+        delta = rect.bottom - visibleBottom;
+      } else if (rect.top < visibleTop) {
+        delta = rect.top - visibleTop;
+      }
+      if (!delta) return;
+      // Prefer the inner scroller (.auth-page) when present so the
+      // page behind stays put; otherwise nudge the window.
+      var scroller = target.closest && target.closest('.auth-page');
+      if (scroller && Math.abs(scroller.scrollHeight - scroller.clientHeight) > 2) {
+        scroller.scrollBy({ top: delta, behavior: 'smooth' });
+      } else if (vv && vv.offsetTop > 0) {
+        // Pinch-zoom/keyboard case: visualViewport scrolls separately.
+        try { vv.scrollBy ? vv.scrollBy(0, delta) : window.scrollBy({ top: delta, behavior: 'smooth' }); } catch (e) {
+          window.scrollBy(0, delta);
+        }
+      } else {
+        window.scrollBy({ top: delta, behavior: 'smooth' });
+      }
+    } catch (e) {}
   }
 
   function scheduleScroll() {
     if (scrollTimer) clearTimeout(scrollTimer);
     // Wait for the keyboard slide-up animation before measuring.
-    scrollTimer = setTimeout(function () { scrollFieldIntoView(null); }, 300);
+    scrollTimer = setTimeout(function () { nudgeFieldIntoView(null); }, 300);
   }
 
   function updateKeyboardHeight() {
@@ -76,8 +82,8 @@
     if (viewportTimer) clearTimeout(viewportTimer);
     viewportTimer = setTimeout(function () {
       updateKeyboardHeight();
-      // Re-center the field after the viewport settled.
-      scrollFieldIntoView(null);
+      // Re-nudge only if the field ended up under the keyboard.
+      nudgeFieldIntoView(null);
     }, VIEWPORT_DELAY);
   }
 
@@ -112,7 +118,7 @@
   window.addEventListener('orientationchange', function () {
     setTimeout(function () {
       updateKeyboardHeight();
-      scrollFieldIntoView(null);
+      nudgeFieldIntoView(null);
     }, 350);
   });
 
