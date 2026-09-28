@@ -26,7 +26,7 @@
       '<option value="">Select an election…</option>' +
       elections.map(function (e) { return '<option value="' + esc(e.id) + '">' + esc(e.name) + '</option>'; }).join('');
 
-    // No visibility toggle on the student portal copy of this page.
+    // Same markup on both portals; the toggle is hidden for voters.
     if ($hideToggle) {
       if (settingsSnap && settingsSnap.exists) {
         const s = settingsSnap.data();
@@ -55,8 +55,7 @@
     }
   }
 
-  // Visibility toggle exists on the admin page only; the student
-  // portal copy of this page has no such control.
+  // Visibility toggle is staff-only; hidden for voters at startup.
   if ($hideToggle) {
   $hideToggle.addEventListener('change', async function () {
     try {
@@ -222,6 +221,13 @@
     // View-only staff can see results but cannot change visibility.
     // (Admin helper exists on admin pages only, never the portal.)
     if (window.hideForReadOnly) window.hideForReadOnly('#visibilityToggleWrap');
+    // Student portal shows the same layout, but the visibility toggle
+    // is strictly staff-only: voters must never see or flip it.
+    if (window.__auth && window.__auth.role === 'voter') {
+      const wrap = document.getElementById('visibilityToggleWrap');
+      if (wrap) wrap.style.display = 'none';
+      if ($hideToggle) $hideToggle.disabled = true;
+    }
     await loadSelect();
     // Real-time: votes, candidates, or settings changes re-render at once.
     // The roster query is staff-only; voters cannot listen to it.
