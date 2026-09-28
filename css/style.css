@@ -479,6 +479,8 @@ body[data-page="public"] .auth-page > * {
 
 /* upcoming election countdown */
 .countdown { font-size: 44px; font-weight: 800; letter-spacing: .04em; color: var(--primary-ink); margin: 8px 0; font-variant-numeric: tabular-nums; }
+/* closing soon: last 5 minutes turn red so nobody misses the deadline */
+.countdown-urgent { color: #c0392b; }
 
 /* search box */
 .search-box { position: relative; max-width: 320px; }

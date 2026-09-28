@@ -106,10 +106,38 @@
   }
 
   function tickCountdown() {
-    const el = document.getElementById('countdownClock');
-    if (!el || !countdownTarget) return;
-    const diff = countdownTarget - Date.now();
-    el.textContent = diff > 0 ? fmtCountdown(diff) : 'Opening now...';
+    const diff = countdownTarget ? countdownTarget - Date.now() : null;
+    // Upcoming election clock: counts down to opening.
+    const openEl = document.getElementById('countdownClock');
+    if (openEl && diff !== null) {
+      openEl.textContent = diff > 0 ? fmtCountdown(diff) : 'Opening now...';
+      openEl.classList.toggle('countdown-urgent', diff > 0 && diff < 5 * 60 * 1000);
+      if (diff <= 0) queueEndedRefresh();
+    }
+    // Live election clock: counts down to closing.
+    const closeEl = document.getElementById('closeClock');
+    if (closeEl && diff !== null) {
+      if (diff > 0) {
+        closeEl.textContent = fmtCountdown(diff);
+        closeEl.classList.toggle('countdown-urgent', diff < 5 * 60 * 1000);
+      } else {
+        closeEl.textContent = '00:00:00';
+        closeEl.classList.remove('countdown-urgent');
+        const msg = document.getElementById('closeClockMsg');
+        if (msg) msg.textContent = 'Voting has ended.';
+        queueEndedRefresh();
+      }
+    }
+  }
+
+  // The window just passed: re-read the election once (debounced) so the
+  // board flips to closed/upcoming on its own — no manual refresh.
+  let endedRefreshAt = 0;
+  function queueEndedRefresh() {
+    const now = Date.now();
+    if (now - endedRefreshAt < 10000) return;
+    endedRefreshAt = now;
+    setTimeout(function () { refresh().catch(function () {}); }, 3000);
   }
 
   function renderUpcoming(up) {
@@ -164,16 +192,29 @@
   }
 
   function renderLive() {
-    $status.textContent = election.name + ' · ' + fmtNum(totalVotes) + ' vote' + (totalVotes === 1 ? '' : 's') + ' cast so far.';
+    const endMs = tsToDate(election.endTime).getTime() || 0;
+    countdownTarget = endMs;
+    $status.textContent = election.name + ' · ' + fmtNum(totalVotes) + ' vote' + (totalVotes === 1 ? '' : 's') + ' cast so far.' +
+      (endMs ? ' · Closes ' + fmtDateTime(election.endTime) + '.' : '');
     $badge.innerHTML = '<span class="badge active-running">Live</span>';
     $blank.classList.add('hidden');
 
+    // Closing countdown banner: voters see exactly when voting ends.
+    const closeBanner = endMs
+      ? '<div class="card center" style="margin-bottom:16px;">' +
+        '<p class="muted text-sm" id="closeClockMsg">Voting closes in</p>' +
+        '<div id="closeClock" class="countdown">Loading...</div>' +
+        '<p class="muted text-sm">Closes <strong>' + esc(fmtDateTime(election.endTime)) + '</strong></p>' +
+        '</div>'
+      : '';
+
     if (!positions.length) {
-      $grid.innerHTML = '<div class="card"><div class="empty">No ballot positions defined for this election yet.</div></div>';
+      $grid.innerHTML = closeBanner + '<div class="card"><div class="empty">No ballot positions defined for this election yet.</div></div>';
+      tickCountdown();
       return;
     }
 
-    $grid.innerHTML = '<div class="stat-grid">' + positions.map(function (pos) {
+    $grid.innerHTML = closeBanner + '<div class="stat-grid">' + positions.map(function (pos) {
       const cands = candidatesByPos[pos.id] || [];
       const votes = posVotes(pos.id);
       const leader = leaderOf(pos.id);
