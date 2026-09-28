@@ -574,13 +574,18 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   if (!adm || adm.length < 3) throw HttpsError('invalid-argument', 'Enter your adm number.');
 
   const wlRef = db.collection('studentList').doc(admDocId(adm));
-  const wlDoc = await wlRef.get();
+  // Both reads are independent: fire together so registration costs one
+  // Firestore round-trip instead of two (~half the latency from Africa
+  // to us-central1).
+  const wlDocPromise = wlRef.get();
+  const dupPromise = db.collection('users').where('voterId', '==', adm).limit(1).get();
+  const wlDoc = await wlDocPromise;
   if (!wlDoc.exists) {
     throw HttpsError('not-found', 'Adm number not found. Please visit the admin office for registration.');
   }
   const wl = wlDoc.data();
 
-  const dup = await db.collection('users').where('voterId', '==', adm).limit(1).get();
+  const dup = await dupPromise;
   if (!dup.empty) throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
 
   // The whitelist flag mirrors the users collection. If it says used but
@@ -658,8 +663,9 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   }
 
   try {
-    await admin.auth().setCustomUserClaims(uid, { role: 'voter', mustChangePassword: mustChangePassword });
-    await db.collection('users').doc(uid).set({
+    // Claims, profile and whitelist flag are independent writes: fire
+    // together instead of three sequential round-trips.
+    const profile = {
       fullName: fullName,
       voterId: adm,
       admNumber: adm,
@@ -673,8 +679,12 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
       passwordChangedAt: mustChangePassword ? null : serverNow(),
       selfRegistered: true,
       createdAt: serverNow()
-    });
-    await wlRef.set({ used: true, registeredUid: uid }, { merge: true });
+    };
+    await Promise.all([
+      admin.auth().setCustomUserClaims(uid, { role: 'voter', mustChangePassword: mustChangePassword }),
+      db.collection('users').doc(uid).set(profile),
+      wlRef.set({ used: true, registeredUid: uid }, { merge: true })
+    ]);
   } catch (err) {
     admin.auth().deleteUser(uid).catch(function () {});
     throw HttpsError('internal', 'Could not finish registration: ' + err.message);
@@ -696,10 +706,14 @@ exports.checkStudentExists = fn.https.onCall(async (data, context) => {
   const adm = normalizeAdm(data.admNumber || data.voterId || '');
   if (!adm || adm.length < 3) throw HttpsError('invalid-argument', 'Enter your adm number.');
 
-  const wlDoc = await db.collection('studentList').doc(admDocId(adm)).get();
+  // Both reads are independent: fire together so the login pre-check
+  // costs one Firestore round-trip instead of two.
+  const [wlDoc, dup] = await Promise.all([
+    db.collection('studentList').doc(admDocId(adm)).get(),
+    db.collection('users').where('voterId', '==', adm).limit(1).get()
+  ]);
   if (!wlDoc.exists) return { exists: false, alreadyRegistered: false };
 
-  const dup = await db.collection('users').where('voterId', '==', adm).limit(1).get();
   if (!dup.empty) return { exists: true, alreadyRegistered: true };
   const wl = wlDoc.data() || {};
   if (wl.used === true || wl.registeredUid) return { exists: true, alreadyRegistered: true };

@@ -88,44 +88,96 @@
     // student-list check) can reuse the same address.
     let email = '';
 
-    // Student adm logins: check the student list FIRST, before any
-    // sign-in attempt, so first-timers go straight to setting their
-    // password without a failed Auth request (no 400 noise). Only
-    // already-registered students reach signInWithEmailAndPassword.
-    if (isAdmStyle) {
-      let st = null;
+    // Student adm logins: SUPER-FAST PATH. Returning voters (~99% of
+    // presses) sign straight in direct to Auth (~0.5s) instead of waiting
+    // on the callable pre-check first (cold start 2-15s). The
+    // student-list check only runs when needed: empty password
+    // (first-timer), or sign-in failed (background, one wave not two).
+    function startPrecheck() {
       try {
         const precheck = FB_FUNCTIONS.httpsCallable('checkStudentExists');
-        const res = await withTimeout(precheck({ admNumber: username }), 15000, 'Student check');
-        st = (res && res.data) || null;
-      } catch (e) { st = null; }
-      if (st && st.exists && !st.alreadyRegistered) {
-        pendingAdm = username;
-        pendingEmail = loginEmailForInput(username);
-        if (setupWrap) setupWrap.classList.remove('hidden');
-        form.style.display = 'none';
-        if (loginLinks) loginLinks.style.display = 'none';
-        toast('First time here? Set your password below to register as a voter.', 'info');
-        if (newPwInput) newPwInput.focus();
+        return withTimeout(precheck({ admNumber: username }), 15000, 'Student check')
+          .then(function (res) { return (res && res.data) || null; })
+          .catch(function () { return null; });
+      } catch (e) { return Promise.resolve(null); }
+    }
+    function showFirstTimer() {
+      pendingAdm = username;
+      pendingEmail = loginEmailForInput(username);
+      email = pendingEmail;
+      if (setupWrap) setupWrap.classList.remove('hidden');
+      form.style.display = 'none';
+      if (loginLinks) loginLinks.style.display = 'none';
+      toast('First time here? Set your password below to register as a voter.', 'info');
+      if (newPwInput) newPwInput.focus();
+      submitBtn.disabled = false;
+      submitBtn.textContent = defaultBtnText;
+    }
+    if (isAdmStyle && !password) {
+      // No password yet: cannot sign in, pre-check only.
+      const st0 = await startPrecheck();
+      if (st0 && st0.exists && !st0.alreadyRegistered) { showFirstTimer(); return; }
+      if (st0 && !st0.exists) {
+        showError('Adm number not found. Please visit the admin office for registration.');
         submitBtn.disabled = false;
         submitBtn.textContent = defaultBtnText;
         return;
       }
+      showError('Enter your password.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = defaultBtnText;
+      return;
+    }
+    if (isAdmStyle && password) {
+      // Returning voter likely: fire the pre-check in the BACKGROUND
+      // while signing in. Sign-in win = never wait for the callable;
+      // sign-in fail = the check result is likely already here.
+      email = loginEmailForInput(username);
+      const bgCheck = startPrecheck();
+      let signErr = null;
+      try {
+        await withTimeout(AUTH.signInWithEmailAndPassword(email, password), 15000, 'Sign in');
+        if (bgCheck && bgCheck.catch) bgCheck.catch(function () {});
+        return; // auth-guard routes by role from here
+      } catch (e) { signErr = e; }
+      if (signErr && signErr.code === 'auth/too-many-requests') {
+        toast(friendlyError(signErr), 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultBtnText;
+        return;
+      }
+      // Legacy adm-as-password accounts (pre-normalization): quick casing
+      // retry while the check runs.
+      const variants = [];
+      const upper = String(password || '').toUpperCase();
+      const lower = String(password || '').toLowerCase();
+      if (upper !== password) variants.push(upper);
+      if (lower !== password) variants.push(lower);
+      let ok = false;
+      let last = signErr;
+      for (const v of variants) {
+        try {
+          await withTimeout(AUTH.signInWithEmailAndPassword(email, v), 15000, 'Sign in');
+          ok = true;
+          break;
+        } catch (e2) { last = e2; }
+      }
+      if (ok) return;
+      const st = await bgCheck;
+      if (st && st.exists && !st.alreadyRegistered) { showFirstTimer(); return; }
       if (st && !st.exists) {
         showError('Adm number not found. Please visit the admin office for registration.');
         submitBtn.disabled = false;
         submitBtn.textContent = defaultBtnText;
         return;
       }
-      if (st && st.alreadyRegistered && !password) {
-        showError('Enter your password.');
-        submitBtn.disabled = false;
-        submitBtn.textContent = defaultBtnText;
-        return;
-      }
-      // Check unavailable (st null): fall through to the sign-in
-      // attempt below; the catch block re-checks as a safety net.
+      toast(friendlyError(last), 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = defaultBtnText;
+      return;
     }
+    // Staff / email-style logins fall through to the resolver + sign-in
+    // below; no student-list pre-check.
     try {
       if (username.indexOf('@') !== -1) {
         email = username.toLowerCase();
