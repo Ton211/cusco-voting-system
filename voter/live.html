@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Results | CUSCO Voting System</title>
+  <title>Live | CUSCO Voting System</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="voter" class="auth-hidden">
@@ -18,17 +18,20 @@
     </header>
 
     <main class="voter-main">
-      <div class="center-card wide" id="resultsCard">
-        <div class="center-logo mb-12"><p>ELECTION OUTCOME</p><h1>Results</h1></div>
-        <div class="card">
-          <div class="form-group" style="margin-bottom:0;">
-            <label for="resultsElection">Election</label>
-            <select class="input" id="resultsElection">
-              <option value="">Select an election…</option>
-            </select>
+      <div class="center-card wide">
+        <div class="page-head" style="margin-bottom:14px;">
+          <div>
+            <h1>Live Voting</h1>
+            <p id="liveStatus">Checking for an open election...</p>
           </div>
+          <span id="liveBadge"></span>
         </div>
-        <div id="resultsBody"><div class="empty">Select an election above to view results.</div></div>
+
+        <div id="positionGrid"></div>
+
+        <div class="card hidden" id="blankCard">
+          <div class="empty">There is no open election right now.<br>Live graphs will appear here automatically once voting opens.</div>
+        </div>
       </div>
     </main>
   </div>
@@ -45,6 +48,6 @@
   <script src="/js/auth-guard.js"></script>
   <script src="/js/voter-common.js"></script>
   <script src="/js/voter/voter-shared.js"></script>
-  <script src="/js/voter/results.js"></script>
+  <script src="/js/voter/live.js"></script>
 </body>
 </html>

@@ -6,7 +6,8 @@
 //
 //  Covers the Phase 13 attack surface matrix against firestore.rules:
 //  server-write-only users/elections, schema-bound positions/candidates,
-//  admin-only votes read, pinned settings — each exercised from
+//  admin+voter votes read (student Live/Results mirror the admin side),
+//  pinned settings — each exercised from
 //  anonymous, voter, admin and legacy view-only (director) contexts.
 // =====================================================================
 
@@ -137,10 +138,11 @@ async function main() {
     await assertFails(voterA.collection('users').doc('voterB').delete());
   });
 
-  //  4. Normal authenticated user attempts to access votes
-  await test('4  voter cannot read the votes/aggregate collection', async () => {
-    await assertFails(voterA.collection('votes').get());
-    await assertFails(voterA.collection('votes').doc(eId).get());
+  //  4. Voter reads the aggregate tallies (student Live + Results
+  //  mirror the admin side, so running counts are visible to voters).
+  await test('4  voter can read the votes/aggregate collection', async () => {
+    await assertSucceeds(voterA.collection('votes').get());
+    await assertSucceeds(voterA.collection('votes').doc(eId).get());
   });
 
   //  5. Normal authenticated user attempts to write votes
@@ -338,11 +340,11 @@ async function main() {
     await assertFails(anon.collection('anything').get());
   });
 
-  await test('X7 voters read votes only after results release', async () => {
+  await test('X7 voters read votes whether released or not', async () => {
     await seedDb.collection('settings').doc('resultsVisibility').update({ hideUntilClose: false });
     await assertSucceeds(voterA.collection('votes').doc(eId).get());
     await seedDb.collection('settings').doc('resultsVisibility').update({ hideUntilClose: true });
-    await assertFails(voterA.collection('votes').doc(eId).get());
+    await assertSucceeds(voterA.collection('votes').doc(eId).get());
   });
 
   await test('X6 studentList reads are admin, writes are superadmin only', async () => {

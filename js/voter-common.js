@@ -2,14 +2,13 @@
 //  Shared voter chrome: top bar name + logout
 // =====================================================================
 (function () {
-  // Voter module menu: mounted into every voter top bar automatically,
-  // so all voter pages expose Dashboard, Vote, Receipt, Results, Profile.
+  // Voter module menu: mounted into every voter top bar automatically.
   const VOTER_NAV = [
     ['Dashboard', '/voter/dashboard.html'],
     ['Vote', '/voter/vote.html'],
-    ['Receipt', '/voter/receipt.html'],
+    ['Live', '/voter/live.html'],
     ['Results', '/voter/results.html'],
-    ['Profile', '/voter/profile.html']
+    ['Settings', '/voter/settings.html']
   ];
 
   function mountNav() {

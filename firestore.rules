@@ -149,16 +149,12 @@ service cloud.firestore {
     // Votes (aggregate results only)
     // Written exclusively by the server-side createVote Cloud Function.
     // Clients can never write here -- even admins cannot forge ballots.
-    // Admins may always read. Voters may read only after the admin
-    // releases results (settings/resultsVisibility.hideUntilClose false).
+    // Admins and voters may read the aggregates: the student portal
+    // shows the same Live graphs and Results as the admin side, so
+    // running tallies are visible to voters while voting is in progress.
     // ------------------------------------------------------------------
-    function resultsReleased() {
-      return exists(/databases/$(database)/documents/settings/resultsVisibility)
-        && get(/databases/$(database)/documents/settings/resultsVisibility).data.hideUntilClose == false;
-    }
-
     match /votes/{electionId} {
-      allow read: if isAdmin() || (isVoter() && resultsReleased());
+      allow read: if isAdmin() || isVoter();
       allow write: if false;
     }
 
