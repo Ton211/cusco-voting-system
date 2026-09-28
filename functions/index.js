@@ -583,7 +583,24 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   const dup = await db.collection('users').where('voterId', '==', adm).limit(1).get();
   if (!dup.empty) throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
 
-  if (rawAdm.length < 6 && adm.length < 6) {
+  // The whitelist flag mirrors the users collection. If it says used but
+  // no profile exists (e.g. admin deleted the login, or a timed-out first
+  // attempt left a stale flag), verify before blocking: a live profile
+  // still blocks, a missing one is treated as stale and allowed through.
+  if (wl.used === true || wl.registeredUid) {
+    const staleUid = wl.registeredUid ? String(wl.registeredUid) : null;
+    if (staleUid) {
+      const staleDoc = await db.collection('users').doc(staleUid).get();
+      if (staleDoc.exists) throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
+    } else {
+      throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
+    }
+  }
+
+  // Normalized adm must clear the 6-char Auth minimum on its own. The
+  // raw input may carry spaces/casing that inflate its length, so only
+  // the normalized form counts here.
+  if (adm.length < 6) {
     throw HttpsError('invalid-argument', 'This adm number is too short for first login. Please visit the admin office.');
   }
 
@@ -597,7 +614,7 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   // itself is the initial password and must be changed on the
   // set-password screen.
   const supplied = String(data.newPassword || '');
-  let password = rawAdm;
+  let password = adm;
   let mustChangePassword = true;
   if (supplied) {
     if (supplied.length < 6) throw HttpsError('invalid-argument', 'Password must be at least 6 characters.');
@@ -614,9 +631,30 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
     uid = user.uid;
   } catch (err) {
     if (err.code === 'auth/email-already-exists') {
-      throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
+      // A previous attempt may have timed out client-side AFTER the Auth
+      // user was created but BEFORE the profile write finished: the email
+      // exists in Auth with no Firestore profile. Recover once by
+      // removing that orphan and recreating, so the retry succeeds first
+      // try instead of looping on "Already registered" forever.
+      try {
+        const orphan = await admin.auth().getUserByEmail(email);
+        const orphanDoc = await db.collection('users').doc(orphan.uid).get();
+        if (!orphanDoc.exists) {
+          await admin.auth().deleteUser(orphan.uid);
+          const retry = await admin.auth().createUser({ email: email, password: password, displayName: fullName });
+          uid = retry.uid;
+        } else {
+          throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
+        }
+      } catch (recoveryErr) {
+        if (recoveryErr && recoveryErr.code === 'already-exists') throw recoveryErr;
+        // Recovery failed (race / delete failed): stay on the safe side
+        // and report the account as existing so the user logs in.
+        if (!uid) throw HttpsError('already-exists', 'Already registered. Please log in with your adm number.');
+      }
+    } else {
+      throw HttpsError('internal', 'Could not create the account: ' + err.message);
     }
-    throw HttpsError('internal', 'Could not create the account: ' + err.message);
   }
 
   try {

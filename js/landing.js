@@ -175,6 +175,7 @@
   const setupBox = document.getElementById('landingSetupBox');
   let pendingAdm = '';
   let pendingEmail = '';
+  let setupBusy = false;
 
   function showSetup(message) {
     toast(message, 'error');
@@ -214,13 +215,19 @@
   }
 
   // Back out of first-time setup (e.g. wrong adm typed): bring the
-  // login form back and forget the pending adm.
+  // login form back and forget the pending adm. Always releases the
+  // register button so Back can never leave it stuck.
   function restoreLoginForm() {
     pendingAdm = '';
     pendingEmail = '';
+    setupBusy = false;
     if (setupWrap) setupWrap.classList.add('hidden');
     loginForm.style.display = '';
     if (loginLinks) loginLinks.style.display = '';
+    if (typeof setupBtn !== 'undefined' && setupBtn) {
+      setupBtn.disabled = false;
+      setupBtn.textContent = 'Register as a voter';
+    }
     pwInput.value = '';
     admInput.focus();
   }
@@ -232,6 +239,7 @@
   if (setupForm) {
     setupForm.addEventListener('submit', async function (e) {
       e.preventDefault();
+      if (setupBusy) return;
       clearError();
       const np = String(setupNewPw.value || '');
       const cp = String(setupConfirmPw.value || '');
@@ -242,6 +250,7 @@
         showSetup('Pick a password different from your adm number.', true);
         return;
       }
+      setupBusy = true;
       setupBtn.disabled = true;
       setupBtn.textContent = 'Registering…';
       try {
@@ -256,14 +265,19 @@
         }
         setupBtn.disabled = false;
         setupBtn.textContent = 'Register as a voter';
+        setupBusy = false;
         return;
       }
       // Registered with the chosen password: sign in at once so the
-      // student lands logged in on their dashboard. Kept separate so a
-      // sign-in failure can never stick the button: the account now
-      // exists, so the form is restored either way.
+      // student lands logged in on their dashboard. Redirect explicitly
+      // here (public landing page guard only reveals, it never routes),
+      // so the button can never stick on "Registering…".
+      setupBtn.textContent = 'Signing you in…';
       try {
-        await AUTH.signInWithEmailAndPassword(pendingEmail, np);
+        await withTimeout(AUTH.signInWithEmailAndPassword(pendingEmail, np), 15000, 'Sign in');
+        toast('Registered successfully. Welcome!', 'success');
+        location.replace('/voter/dashboard.html');
+        return;
       } catch (signErr) {
         restoreLoginForm();
         if (signErr && signErr.code === 'auth/too-many-requests') {
@@ -273,6 +287,7 @@
         }
         setupBtn.disabled = false;
         setupBtn.textContent = 'Register as a voter';
+        setupBusy = false;
       }
     });
   }
