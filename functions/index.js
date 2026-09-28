@@ -97,6 +97,10 @@ const RATE_LIMITS = {
   // (live page calls it the second the countdown hits zero). Tight cap:
   // the work is one read + one conditional batch write.
   resolveElectionState: { windowMs: 60 * 1000, max: 10 },
+  // Voter registration window: admin writes are rare, student
+  // registrations are one-per-account (already-exists after that).
+  setVoterRegistration: { windowMs: 60 * 60 * 1000, max: 30 },
+  registerAsVoter: { windowMs: 60 * 60 * 1000, max: 5 },
   bootstrapSuperAdmin: { windowMs: 60 * 60 * 1000, max: 3 }
 };
 
@@ -285,6 +289,10 @@ exports.registerUser = fn.https.onCall(async (data, context) => {
       role: role,
       status: 'active',
       mustChangePassword: mustChangePassword,
+      // Voter registration is a separate step the student completes on
+      // their dashboard while the admin's registration window is open.
+      // Admin-enlisted voters count as registered straight away.
+      voterRegistered: role === 'voter',
       passwordChangedAt: null,
       createdAt: serverNow()
     });
@@ -682,6 +690,11 @@ exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
       mustChangePassword: mustChangePassword,
       passwordChangedAt: mustChangePassword ? null : serverNow(),
       selfRegistered: true,
+      // Account created, but NOT yet registered as a voter: the student
+      // completes that step on their dashboard while the admin's
+      // registration window is open. Accounts predating this field
+      // (missing) count as registered.
+      voterRegistered: false,
       createdAt: serverNow()
     };
     await Promise.all([
@@ -711,17 +724,22 @@ exports.checkStudentExists = fn.https.onCall(async (data, context) => {
   if (!adm || adm.length < 3) throw HttpsError('invalid-argument', 'Enter your adm number.');
 
   // Both reads are independent: fire together so the login pre-check
-  // costs one Firestore round-trip instead of two.
-  const [wlDoc, dup] = await Promise.all([
+  // costs one Firestore round-trip instead of two. The registration
+  // window rides along so login/landing can hint at it with no extra
+  // call (effective state computed in memory, never persisted here).
+  const [wlDoc, dup, regSnap] = await Promise.all([
     db.collection('studentList').doc(admDocId(adm)).get(),
-    db.collection('users').where('voterId', '==', adm).limit(1).get()
+    db.collection('users').where('voterId', '==', adm).limit(1).get(),
+    db.collection('settings').doc('voterRegistration').get().catch(function () { return null; })
   ]);
-  if (!wlDoc.exists) return { exists: false, alreadyRegistered: false };
+  const regState = registrationState(regSnap && regSnap.exists ? regSnap.data() : null, Date.now());
+  const registration = { open: regState.open, status: regState.status, startMs: regState.startMs, endMs: regState.endMs };
+  if (!wlDoc.exists) return { exists: false, alreadyRegistered: false, registration: registration };
 
-  if (!dup.empty) return { exists: true, alreadyRegistered: true };
+  if (!dup.empty) return { exists: true, alreadyRegistered: true, registration: registration };
   const wl = wlDoc.data() || {};
-  if (wl.used === true || wl.registeredUid) return { exists: true, alreadyRegistered: true };
-  return { exists: true, alreadyRegistered: false };
+  if (wl.used === true || wl.registeredUid) return { exists: true, alreadyRegistered: true, registration: registration };
+  return { exists: true, alreadyRegistered: false, registration: registration };
 });
 
 // ---------------------------------------------------------------------
@@ -1138,17 +1156,28 @@ exports.resolveElectionState = fn.https.onCall(async (data, context) => {
 
   const now = Date.now();
   const snap = await db.collection('elections').get();
-  if (snap.empty) return { activeId: null, changed: false, now: now };
-
-  const computed = computeElectionClockFlips(snap.docs, now);
-  if (computed.flips.length) {
-    const batch = db.batch();
-    computed.flips.forEach(function (f) {
-      batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
-    });
-    await batch.commit();
+  let changed = false;
+  let activeId = null;
+  if (!snap.empty) {
+    const computed = computeElectionClockFlips(snap.docs, now);
+    if (computed.flips.length) {
+      const batch = db.batch();
+      computed.flips.forEach(function (f) {
+        batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
+      });
+      await batch.commit();
+      changed = true;
+    }
+    activeId = computed.activeId;
   }
-  return { activeId: computed.activeId, changed: computed.flips.length > 0, now: now };
+  // The voter registration window resolves on the same nudge, so admin
+  // schedule boundaries apply instantly on any signed-in page.
+  let registration = null;
+  try {
+    const regState = await resolveRegistrationDoc(now);
+    registration = { open: regState.open, status: regState.status, startMs: regState.startMs, endMs: regState.endMs };
+  } catch (e) { registration = null; }
+  return { activeId: activeId, changed: changed, now: now, registration: registration };
 });
 
 // ---------------------------------------------------------------------
@@ -1161,17 +1190,156 @@ exports.resolveElectionState = fn.https.onCall(async (data, context) => {
 exports.enforceElectionWindows = fn.pubsub.schedule('every 1 minutes').onRun(async () => {
   const now = Date.now();
   const snap = await db.collection('elections').get();
-  if (snap.empty) return null;
+  if (!snap.empty) {
+    const computed = computeElectionClockFlips(snap.docs, now);
+    if (computed.flips.length) {
+      const batch = db.batch();
+      computed.flips.forEach(function (f) {
+        batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
+      });
+      await batch.commit();
+    }
+  }
+  // Voter registration window resolves on the same backstop tick, so a
+  // scheduled opening / timed closing applies even with no traffic.
+  try {
+    await resolveRegistrationDoc(now);
+  } catch (e) {}
+  return null;
+});
 
-  const computed = computeElectionClockFlips(snap.docs, now);
-  if (computed.flips.length) {
-    const batch = db.batch();
-    computed.flips.forEach(function (f) {
-      batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
-    });
-    await batch.commit();
+// ---------------------------------------------------------------------
+//  Voter registration window
+//  The Super Admin opens / schedules / closes voter registration
+//  (settings/voterRegistration doc). Students complete the separate
+//  "Register as a voter" step on their dashboard only while the window
+//  is open. First-time account setup (password) stays whitelist-based
+//  and is NOT gated by this window, so newcomers always reach their
+//  dashboard first.
+// ---------------------------------------------------------------------
+const REG_DOC = 'voterRegistration';
+
+function regWindowMs(v) {
+  if (!v) return 0;
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  const d = v instanceof Date ? v : new Date(v);
+  return d.getTime() || 0;
+}
+
+// Pure: due status transition given stored doc data + now.
+// Missing doc = closed (admin opens it explicitly).
+function computeRegistrationFlip(reg, now) {
+  const status = reg ? String(reg.status || 'closed') : 'closed';
+  const startMs = reg ? regWindowMs(reg.startTime) : 0;
+  const endMs = reg ? regWindowMs(reg.endTime) : 0;
+  if (status === 'scheduled') {
+    if (endMs && now > endMs) return 'closed';
+    if (startMs && now >= startMs && (!endMs || now <= endMs)) return 'open';
+    return null;
+  }
+  if (status === 'open') {
+    if (endMs && now > endMs) return 'closed';
+    return null;
   }
   return null;
+}
+
+// Effective state for clients: resolves time-passed transitions in
+// memory (no write) so even signed-out callers see the truth.
+function registrationState(reg, now) {
+  const at = now || Date.now();
+  const flip = computeRegistrationFlip(reg, at);
+  const status = flip || (reg ? String(reg.status || 'closed') : 'closed');
+  const startMs = reg ? regWindowMs(reg.startTime) : 0;
+  const endMs = reg ? regWindowMs(reg.endTime) : 0;
+  return { status: status, open: status === 'open', startMs: startMs, endMs: endMs };
+}
+
+// Read + persist any due flip. Used by registerAsVoter (resolve then
+// check in one call) and the 1-minute scheduler backstop.
+async function resolveRegistrationDoc(now) {
+  const ref = db.collection('settings').doc(REG_DOC);
+  const snap = await ref.get();
+  const reg = snap.exists ? snap.data() : null;
+  const flip = computeRegistrationFlip(reg, now);
+  if (flip) {
+    await ref.set({ status: flip, updatedAt: serverNow() }, { merge: true });
+    return registrationState(Object.assign({}, reg, { status: flip }), now);
+  }
+  return registrationState(reg, now);
+}
+
+// ---------------------------------------------------------------------
+//  setVoterRegistration (Super Admin only)
+//  action open: registration opens at once (optional endTimeISO makes
+//    it auto-close when that time passes).
+//  action close: closes immediately.
+//  action schedule: opens at startTimeISO, closes at endTimeISO.
+// ---------------------------------------------------------------------
+exports.setVoterRegistration = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('setVoterRegistration', context.auth ? context.auth.uid : clientIp(context));
+  requireSuperAdmin(context);
+
+  const action = String(data.action || '').trim();
+  if (['open', 'close', 'schedule'].indexOf(action) === -1) {
+    throw HttpsError('invalid-argument', 'Action must be open, close or schedule.');
+  }
+
+  const ref = db.collection('settings').doc(REG_DOC);
+  if (action === 'close') {
+    await ref.set({ status: 'closed', updatedAt: serverNow() }, { merge: true });
+    return { status: 'closed' };
+  }
+  if (action === 'open') {
+    const hasEnd = data.endTimeISO !== undefined && data.endTimeISO !== null && String(data.endTimeISO) !== '';
+    const endTime = hasEnd ? toTimestamp(data.endTimeISO) : null;
+    if (hasEnd && !endTime) throw HttpsError('invalid-argument', 'Invalid end time.');
+    if (endTime && Date.now() > tsMillis(endTime)) throw HttpsError('invalid-argument', 'End time is already in the past.');
+    const fields = { status: 'open', updatedAt: serverNow() };
+    if (endTime) fields.endTime = endTime;
+    else fields.endTime = admin.firestore.FieldValue.delete();
+    await ref.set(fields, { merge: true });
+    return { status: 'open' };
+  }
+  const startTime = toTimestamp(data.startTimeISO);
+  const endTime = toTimestamp(data.endTimeISO);
+  if (!startTime || !endTime) throw HttpsError('invalid-argument', 'Start and end times are required.');
+  if (tsMillis(endTime) <= tsMillis(startTime)) throw HttpsError('invalid-argument', 'End time must be after the start time.');
+  await ref.set({ status: 'scheduled', startTime: startTime, endTime: endTime, updatedAt: serverNow() }, { merge: true });
+  return { status: 'scheduled' };
+});
+
+// ---------------------------------------------------------------------
+//  registerAsVoter (signed-in voter)
+//  The dashboard "Register as a Voter" button. Succeeds only while the
+//  admin's registration window is open; one registration per account.
+// ---------------------------------------------------------------------
+exports.registerAsVoter = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  const uid = requireAuth(context);
+  rateLimit('registerAsVoter', uid);
+
+  const userRef = db.collection('users').doc(uid);
+  const userDoc = await userRef.get();
+  if (!userDoc.exists) throw HttpsError('not-found', 'No voter profile found.');
+  const profile = userDoc.data() || {};
+  if (profile.role !== 'voter') throw HttpsError('permission-denied', 'Only voters may register as a voter.');
+  if (profile.status !== 'active') throw HttpsError('failed-precondition', 'Your account is inactive.');
+  if (profile.voterRegistered === true) throw HttpsError('already-exists', 'You are already registered as a voter.');
+
+  // Resolve-then-check in one call so the window flips the instant it
+  // is due, even before the 1-minute scheduler ticks.
+  const state = await resolveRegistrationDoc(Date.now());
+  if (!state.open) {
+    if (state.status === 'scheduled' && state.startMs) {
+      throw HttpsError('failed-precondition', 'Voter registration has not opened yet.');
+    }
+    throw HttpsError('failed-precondition', 'Voter registration is currently closed.');
+  }
+
+  await userRef.update({ voterRegistered: true, voterRegisteredAt: serverNow(), updatedAt: serverNow() });
+  return { ok: true };
 });
 
 // ---------------------------------------------------------------------

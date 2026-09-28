@@ -41,6 +41,32 @@
         </div>
       </div>
 
+      <div class="card mb-12" id="regWindowCard">
+        <div class="card-title">
+          <span>Voter Registration <span id="regStatusBadge"></span></span>
+        </div>
+        <p class="muted text-sm" id="regWindowText">Loading registration status…</p>
+        <div id="regCountdownWrap" class="center hidden" style="margin:8px 0;">
+          <div id="regCountdown" class="countdown" style="font-size:32px;">--:--:--</div>
+          <p class="muted text-sm" id="regCountdownLabel"></p>
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr; align-items:end;">
+          <div class="form-group">
+            <label for="regStart">Opens at (schedule)</label>
+            <input class="input" type="datetime-local" id="regStart">
+          </div>
+          <div class="form-group">
+            <label for="regEnd">Closes at</label>
+            <input class="input" type="datetime-local" id="regEnd">
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn btn-primary btn-sm" id="regOpenBtn" type="button">Open now</button>
+          <button class="btn btn-outline btn-sm" id="regScheduleBtn" type="button">Save schedule</button>
+          <button class="btn btn-ghost btn-sm" id="regCloseBtn" type="button">Close now</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">
           <span>Student List (whitelist for self registration)</span>

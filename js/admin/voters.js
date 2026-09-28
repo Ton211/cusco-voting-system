@@ -41,6 +41,9 @@
     else if (u.status === 'inactive') badge = '<span class="badge inactive">Inactive</span>';
     else badge = '<span class="badge active">Active</span>';
     if (u.role === 'voter' && u.selfRegistered === true) badge += ' <span class="badge admin">Self registered</span>';
+    // Voter-registration step (dashboard button during the admin's open
+    // window). Accounts predating the field (missing) count as registered.
+    badge += u.voterRegistered === false ? ' <span class="badge pending">Not registered</span>' : ' <span class="badge active">Registered</span>';
     return badge;
   }
 
@@ -264,6 +267,7 @@
       '<tr><td><span class="muted">Adm Number</span></td><td>' + esc(u.voterId || 'Not set') + '</td></tr>' +
       '<tr><td><span class="muted">Gender</span></td><td>' + esc(u.gender || 'Not set') + '</td></tr>' +
       '<tr><td><span class="muted">Role</span></td><td>' + roleBadge(u.role) + '</td></tr>' +
+      '<tr><td><span class="muted">Voter registration</span></td><td>' + (u.voterRegistered === false ? '<span class="badge pending">Not registered</span>' : '<span class="badge active">Registered</span>') + '</td></tr>' +
       '<tr><td><span class="muted">Password</span></td><td>' + passwordBadge(u) + '</td></tr>' +
       '<tr><td><span class="muted">Status</span></td><td>' + statusBadge(u) + '</td></tr>' +
       '<tr><td><span class="muted">Registered</span></td><td>' + fmtDateTime(u.createdAt) + '</td></tr>' +

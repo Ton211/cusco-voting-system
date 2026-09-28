@@ -17,6 +17,17 @@ function esc(value) {
   });
 }
 
+// Shared countdown formatter: 300000 -> "05:00", 90061000 -> "1d 01:01:01".
+function fmtCountdownMs(ms) {
+  let s = Math.max(0, Math.floor((ms || 0) / 1000));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = function (n) { return String(n).padStart(2, '0'); };
+  return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
+}
+
 function fmtNum(value) {
   const n = Number(value || 0);
   return n.toLocaleString('en-US');

@@ -211,11 +211,151 @@
     }
   });
 
+  // ---------------------------------------------------------------
+  // Voter registration window (admin schedules / opens / closes).
+  // Students register on their dashboard only while it is open; the
+  // window auto-flips at its boundaries via resolveElectionState +
+  // the 1-minute scheduler, and the countdown below ticks each second.
+  // ---------------------------------------------------------------
+  const setRegFn = callable('setVoterRegistration');
+  const $regBadge = document.getElementById('regStatusBadge');
+  const $regText = document.getElementById('regWindowText');
+  const $regCountWrap = document.getElementById('regCountdownWrap');
+  const $regClock = document.getElementById('regCountdown');
+  const $regClockLabel = document.getElementById('regCountdownLabel');
+  const $regStart = document.getElementById('regStart');
+  const $regEnd = document.getElementById('regEnd');
+  let regTarget = 0; // ms epoch the countdown runs toward (0 = none)
+  let regZeroFiredAt = 0;
+
+  function toLocalInput(ts) {
+    const d = tsToDate(ts);
+    if (!d || isNaN(d.getTime())) return '';
+    const p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function renderRegWindow(reg) {
+    const status = reg ? String(reg.status || 'closed') : 'closed';
+    const startMs = reg && reg.startTime ? tsToDate(reg.startTime).getTime() || 0 : 0;
+    const endMs = reg && reg.endTime ? tsToDate(reg.endTime).getTime() || 0 : 0;
+    if ($regBadge) {
+      if (status === 'open') $regBadge.innerHTML = '<span class="badge active-running">Open</span>';
+      else if (status === 'scheduled') $regBadge.innerHTML = '<span class="badge scheduled">Scheduled</span>';
+      else $regBadge.innerHTML = '<span class="badge closed">Closed</span>';
+    }
+    if ($regStart && startMs) $regStart.value = toLocalInput(reg.startTime);
+    if ($regEnd && endMs) $regEnd.value = toLocalInput(reg.endTime);
+    if (status === 'open') {
+      if ($regText) $regText.textContent = endMs
+        ? 'Registration is OPEN. Students can register as voters until ' + fmtDateTime(reg.endTime) + '.'
+        : 'Registration is OPEN. Students can register as voters.';
+      regTarget = endMs || 0;
+      if ($regClockLabel) $regClockLabel.textContent = endMs ? 'Registration closes in' : '';
+    } else if (status === 'scheduled') {
+      if ($regText) $regText.textContent = 'Registration opens ' + (startMs ? fmtDateTime(reg.startTime) : 'soon') +
+        (endMs ? ' and closes ' + fmtDateTime(reg.endTime) + '.' : '.');
+      regTarget = startMs || 0;
+      if ($regClockLabel) $regClockLabel.textContent = startMs ? 'Registration opens in' : '';
+    } else {
+      if ($regText) $regText.textContent = 'Registration is CLOSED. Students cannot register as voters until you open it.';
+      regTarget = 0;
+    }
+    if ($regCountWrap) $regCountWrap.classList.toggle('hidden', !regTarget);
+    tickRegClock();
+  }
+
+  function tickRegClock() {
+    if (!$regClock || !regTarget) return;
+    const diff = regTarget - Date.now();
+    if (diff > 0) {
+      $regClock.textContent = fmtCountdownMs(diff);
+      $regClock.classList.toggle('countdown-urgent', diff < 5 * 60 * 1000);
+    } else {
+      $regClock.textContent = '00:00:00';
+      if (Date.now() - regZeroFiredAt > 10000) {
+        regZeroFiredAt = Date.now();
+        // Boundary just passed: flip the window now, then re-read.
+        const resolver = FB_FUNCTIONS.httpsCallable('resolveElectionState');
+        withTimeout(resolver({}), 15000, 'Registration clock')
+          .then(function () { return loadRegWindow(); })
+          .catch(function () { return loadRegWindow(); });
+      }
+    }
+  }
+  setInterval(tickRegClock, 1000);
+
+  async function loadRegWindow() {
+    try {
+      // Nudge the clock first so a due open/close applies instantly.
+      try {
+        const resolver = FB_FUNCTIONS.httpsCallable('resolveElectionState');
+        const res = await withTimeout(resolver({}), 15000, 'Registration clock');
+        if (res && res.data && res.data.registration) {
+          const r = res.data.registration;
+          renderRegWindow({ status: r.status, startTime: r.startMs ? new Date(r.startMs) : null, endTime: r.endMs ? new Date(r.endMs) : null });
+          return;
+        }
+      } catch (e) {}
+      const snap = await DB.collection('settings').doc('voterRegistration').get();
+      renderRegWindow(snap.exists ? snap.data() : null);
+    } catch (e) {
+      if ($regText) $regText.textContent = 'Could not load registration status.';
+    }
+  }
+
+  function isoOrNull(input) {
+    const v = String((input && input.value) || '').trim();
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  const $regOpenBtn = document.getElementById('regOpenBtn');
+  const $regScheduleBtn = document.getElementById('regScheduleBtn');
+  const $regCloseBtn = document.getElementById('regCloseBtn');
+  if ($regOpenBtn) $regOpenBtn.addEventListener('click', async function () {
+    $regOpenBtn.disabled = true;
+    try {
+      const payload = { action: 'open' };
+      const endIso = isoOrNull($regEnd);
+      if (endIso) payload.endTimeISO = endIso;
+      await setRegFn(payload);
+      toast('Voter registration is now open.', 'success');
+      await loadRegWindow();
+    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    finally { $regOpenBtn.disabled = false; }
+  });
+  if ($regScheduleBtn) $regScheduleBtn.addEventListener('click', async function () {
+    const startIso = isoOrNull($regStart);
+    const endIso = isoOrNull($regEnd);
+    if (!startIso || !endIso) { toast('Pick both an opening and a closing time.', 'error'); return; }
+    $regScheduleBtn.disabled = true;
+    try {
+      await setRegFn({ action: 'schedule', startTimeISO: startIso, endTimeISO: endIso });
+      toast('Registration schedule saved.', 'success');
+      await loadRegWindow();
+    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    finally { $regScheduleBtn.disabled = false; }
+  });
+  if ($regCloseBtn) $regCloseBtn.addEventListener('click', async function () {
+    const ok = await confirmDialog({ title: 'Close registration', message: 'Close voter registration now? Students will no longer be able to register as voters.', confirmText: 'Close', danger: true });
+    if (!ok) return;
+    $regCloseBtn.disabled = true;
+    try {
+      await setRegFn({ action: 'close' });
+      toast('Voter registration is now closed.', 'success');
+      await loadRegWindow();
+    } catch (err) { toast(callFriendly(err).message, 'error'); }
+    finally { $regCloseBtn.disabled = false; }
+  });
+
   window.authPromise.then(function () {
     // Read-only staff can see the list but cannot add, import or edit.
     window.hideForReadOnly('#openAddBtn');
     window.hideForReadOnly('#openImportBtn');
-    return load().then(function () { liveCollections([DB.collection('studentList')], load, { minIntervalMs: 15000 }); });
+    loadRegWindow();
+    return load().then(function () { liveCollections([DB.collection('studentList'), DB.collection('settings').doc('voterRegistration')], function () { load(); loadRegWindow(); }, { minIntervalMs: 15000 }); });
   }).catch(function (err) {
     toast('Could not load students: ' + friendlyError(err), 'error');
   });
