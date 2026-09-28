@@ -90,11 +90,14 @@ window.hideForReadOnly = function (sel) {
   // Mobile hamburger drawer (phones/tablets). The toggle button, close
   // button and backdrop are injected here, so without JS the sidebar
   // simply keeps its scrollable top nav row (see style.css).
+  // Critical drawer positioning is set inline so the drawer keeps
+  // working even with a stale cached stylesheet; style.css adds the
+  // polish on top. Only active at phone widths (matchMedia).
   (function initDrawer() {
     var sidebar = document.querySelector('.sidebar');
     var nav = sidebar && sidebar.querySelector('nav');
-    if (!sidebar || !nav) return;
-    document.body.classList.add('has-drawer');
+    if (!sidebar || !nav || !window.matchMedia) return;
+    var mq = window.matchMedia('(max-width: 860px)');
 
     var toggle = document.createElement('button');
     toggle.type = 'button';
@@ -116,10 +119,34 @@ window.hideForReadOnly = function (sel) {
 
     var scrim = document.createElement('div');
     scrim.className = 'drawer-scrim';
+    scrim.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(22,33,58,.55);z-index:190;';
     document.body.appendChild(scrim);
 
+    function paintMobile(on) {
+      document.body.classList.toggle('has-drawer', on);
+      nav.style.position = on ? 'fixed' : '';
+      nav.style.top = on ? '0' : '';
+      nav.style.left = on ? '0' : '';
+      nav.style.bottom = on ? '0' : '';
+      nav.style.width = on ? 'min(78vw, 300px)' : '';
+      nav.style.zIndex = on ? '200' : '';
+      nav.style.background = on ? '#16213a' : '';
+      nav.style.padding = on ? '12px 14px 20px' : '';
+      nav.style.overflowY = on ? 'auto' : '';
+      nav.style.transition = on ? 'transform .25s ease' : '';
+      setOpen(false);
+    }
+
     function setOpen(open) {
+      if (!document.body.classList.contains('has-drawer')) open = false;
       document.body.classList.toggle('drawer-open', open);
+      if (document.body.classList.contains('has-drawer')) {
+        nav.style.transform = open ? 'none' : 'translateX(-105%)';
+      } else {
+        nav.style.transform = '';
+      }
+      scrim.style.display = open ? 'block' : 'none';
+      sidebar.style.zIndex = open ? '300' : '';
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
       try { document.body.style.overflow = open ? 'hidden' : ''; } catch (e) {}
@@ -135,6 +162,9 @@ window.hideForReadOnly = function (sel) {
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') setOpen(false);
     });
+    paintMobile(mq.matches);
+    if (mq.addEventListener) { mq.addEventListener('change', function (e) { paintMobile(e.matches); }); }
+    else if (mq.addListener) { mq.addListener(function (e) { paintMobile(e.matches); }); }
   })();
 
   // Highlight the current page in the sidebar.
