@@ -93,6 +93,10 @@ const RATE_LIMITS = {
   resetSystem: { windowMs: 60 * 60 * 1000, max: 5 },
   saveElection: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteElection: { windowMs: 60 * 60 * 1000, max: 30 },
+  // Any signed-in voter may nudge the election clock at the boundary
+  // (live page calls it the second the countdown hits zero). Tight cap:
+  // the work is one read + one conditional batch write.
+  resolveElectionState: { windowMs: 60 * 1000, max: 10 },
   bootstrapSuperAdmin: { windowMs: 60 * 60 * 1000, max: 3 }
 };
 
@@ -1074,60 +1078,99 @@ function windowMs(ts) {
 }
 
 // ---------------------------------------------------------------------
-//  enforceElectionWindows
-//  Runs every minute. Makes start/end times self executing:
-//  - an ACTIVE election past its end time is closed automatically
-//  - a SCHEDULED election whose window has arrived opens automatically,
-//    but only when no other election is still active, so overlapping
-//    windows never silently close a valid election
-//  - a SCHEDULED election whose end already passed is closed directly
-//  The createVote transaction independently refuses any vote outside
-//  the window, so timing stays strict even between scheduler ticks.
+//  Shared election-clock logic (single source of truth).
+//  Given all election docs + now, returns the status flips to apply:
+//  - ACTIVE past its end time -> closed
+//  - SCHEDULED whose end already passed -> closed directly
+//  - earliest SCHEDULED whose window has arrived -> active, but only
+//    when no other election is still active, so overlapping windows
+//    never silently close a valid election
+//  Pure computation (no I/O) so the 1-minute scheduler AND the
+//  on-demand resolveElectionState callable below always agree.
 // ---------------------------------------------------------------------
-exports.enforceElectionWindows = fn.pubsub.schedule('every 1 minutes').onRun(async () => {
-  const now = Date.now();
-  const snap = await db.collection('elections').get();
-  if (snap.empty) return null;
-
-  const batch = db.batch();
-  let changed = 0;
+function computeElectionClockFlips(docs, now) {
+  const flips = [];
   let activeId = null;
 
-  // Pass 1: close every active election past its end time.
-  snap.docs.forEach(function (doc) {
+  docs.forEach(function (doc) {
     const e = doc.data() || {};
     if (e.status !== 'active') return;
     const endMs = windowMs(e.endTime);
     if (endMs && now > endMs) {
-      batch.update(doc.ref, { status: 'closed', updatedAt: serverNow() });
-      changed++;
+      flips.push({ ref: doc.ref, status: 'closed' });
     } else if (!activeId) {
       activeId = doc.id;
     }
   });
 
-  // Pass 2: open the earliest ready scheduled election, or retire
-  // scheduled elections whose window already passed.
   const ready = [];
-  snap.docs.forEach(function (doc) {
+  docs.forEach(function (doc) {
     const e = doc.data() || {};
     if (e.status !== 'scheduled') return;
     const startMs = windowMs(e.startTime);
     const endMs = windowMs(e.endTime);
     if (endMs && now > endMs) {
-      batch.update(doc.ref, { status: 'closed', updatedAt: serverNow() });
-      changed++;
+      flips.push({ ref: doc.ref, status: 'closed' });
     } else if (startMs && now >= startMs && (!endMs || now <= endMs)) {
       ready.push({ ref: doc.ref, startMs: startMs });
     }
   });
   ready.sort(function (a, b) { return a.startMs - b.startMs; });
   if (ready.length && !activeId) {
-    batch.update(ready[0].ref, { status: 'active', updatedAt: serverNow() });
-    changed++;
+    flips.push({ ref: ready[0].ref, status: 'active' });
+    activeId = ready[0].ref.id;
   }
+  return { flips: flips, activeId: activeId };
+}
 
-  if (changed) await batch.commit();
+// ---------------------------------------------------------------------
+//  resolveElectionState (any signed-in user)
+//  On-demand election clock: the live page calls this the instant its
+//  countdown hits zero so opening/closing happens immediately instead
+//  of waiting for the next 1-minute scheduler tick. Idempotent and
+//  strictly rate-limited; returns the current state after applying any
+//  due flips.
+// ---------------------------------------------------------------------
+exports.resolveElectionState = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  const uid = requireAuth(context);
+  rateLimit('resolveElectionState', uid);
+
+  const now = Date.now();
+  const snap = await db.collection('elections').get();
+  if (snap.empty) return { activeId: null, changed: false, now: now };
+
+  const computed = computeElectionClockFlips(snap.docs, now);
+  if (computed.flips.length) {
+    const batch = db.batch();
+    computed.flips.forEach(function (f) {
+      batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
+    });
+    await batch.commit();
+  }
+  return { activeId: computed.activeId, changed: computed.flips.length > 0, now: now };
+});
+
+// ---------------------------------------------------------------------
+//  enforceElectionWindows
+//  Backstop every minute. Makes start/end times self executing (same
+//  shared logic as resolveElectionState above).
+//  The createVote transaction independently refuses any vote outside
+//  the window, so timing stays strict even between ticks.
+// ---------------------------------------------------------------------
+exports.enforceElectionWindows = fn.pubsub.schedule('every 1 minutes').onRun(async () => {
+  const now = Date.now();
+  const snap = await db.collection('elections').get();
+  if (snap.empty) return null;
+
+  const computed = computeElectionClockFlips(snap.docs, now);
+  if (computed.flips.length) {
+    const batch = db.batch();
+    computed.flips.forEach(function (f) {
+      batch.update(f.ref, { status: f.status, updatedAt: serverNow() });
+    });
+    await batch.commit();
+  }
   return null;
 });
 

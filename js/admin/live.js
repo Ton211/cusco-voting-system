@@ -130,14 +130,31 @@
     }
   }
 
-  // The window just passed: re-read the election once (debounced) so the
-  // board flips to closed/upcoming on its own — no manual refresh.
+  // The window just passed: flip the election state on demand (opens /
+  // closes immediately instead of waiting for the 1-minute scheduler),
+  // then re-read. Debounced so every open tab fires at most one call.
   let endedRefreshAt = 0;
+  let resolving = false;
+  async function resolveNow() {
+    if (resolving) return false;
+    resolving = true;
+    try {
+      const fn = FB_FUNCTIONS.httpsCallable('resolveElectionState');
+      const res = await withTimeout(fn({}), 15000, 'Election clock');
+      return !!(res && res.data && res.data.changed);
+    } catch (e) {
+      return false;
+    } finally {
+      resolving = false;
+    }
+  }
   function queueEndedRefresh() {
     const now = Date.now();
     if (now - endedRefreshAt < 10000) return;
     endedRefreshAt = now;
-    setTimeout(function () { refresh().catch(function () {}); }, 3000);
+    setTimeout(function () {
+      resolveNow().then(function () { return refresh().catch(function () {}); });
+    }, 1500);
   }
 
   function renderUpcoming(up) {
@@ -232,19 +249,38 @@
 
   // Real-time sync: snapshots refresh the inline graphs the moment
   // votes change. The 1s countdown clock stays on its own timer.
+  // Boundary watcher: within 30s of an open/close deadline, nudge the
+  // election clock every 15s so the flip lands in seconds even if this
+  // tab loaded after the countdown already passed.
+  let boundaryTimer = null;
+  function watchBoundary() {
+    if (!countdownTarget) return;
+    const gap = countdownTarget - Date.now();
+    if (Math.abs(gap) > 30000) return;
+    resolveNow().then(function (changed) {
+      if (changed) return refresh().catch(function () {});
+    });
+  }
   window.authPromise.then(function () {
     return refresh().catch(function (err) {
       $status.textContent = 'Could not load live data.';
       toast('Could not load live data: ' + friendlyError(err), 'error');
     });
   }).then(function () {
+    // First paint may have read a stale status (scheduler lag): resolve
+    // once in the background so a due open/close applies immediately.
+    resolveNow().then(function (changed) {
+      if (changed) return refresh().catch(function () {});
+    });
     liveCollections(
       [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes')],
       function () { return refresh().catch(function () {}); }
     );
     countdownTimer = setInterval(tickCountdown, 1000);
+    boundaryTimer = setInterval(watchBoundary, 15000);
     window.addEventListener('beforeunload', function () {
       if (countdownTimer) clearInterval(countdownTimer);
+      if (boundaryTimer) clearInterval(boundaryTimer);
     });
   });
 })();

@@ -18,6 +18,16 @@
 
     election = await fetchActiveElection();
     if (!election) {
+      // No active status — but a scheduled window may have just arrived
+      // (scheduler ticks every minute). Nudge the election clock once so
+      // opening happens immediately, then look again.
+      try {
+        const resolver = FB_FUNCTIONS.httpsCallable('resolveElectionState');
+        await withTimeout(resolver({}), 15000, 'Election clock');
+        election = await fetchActiveElection();
+      } catch (e) { election = null; }
+    }
+    if (!election) {
       $body.innerHTML = '<div class="alert alert-warn center">There is no active election right now.</div>';
       return;
     }
