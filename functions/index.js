@@ -480,10 +480,11 @@ exports.importStudents = fn.https.onCall(async (data, context) => {
 });
 
 // ---------------------------------------------------------------------
-//  updateStudent / deleteStudent (admin only)
+//  updateStudent / deleteStudent (Super Admin only)
 //  Adm number is the doc id and stays immutable; only the name is edited.
-//  A listed student who already registered cannot be deleted (their login
-//  account depends on the entry).
+//  Deleting a student removes the whitelist entry even if they already
+//  registered; their voter login stays active (deactivate it from the
+//  Voters page if they should no longer vote).
 // ---------------------------------------------------------------------
 exports.updateStudent = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
@@ -513,10 +514,6 @@ exports.deleteStudent = fn.https.onCall(async (data, context) => {
   const ref = db.collection('studentList').doc(admDocId(adm));
   const snap = await ref.get();
   if (!snap.exists) throw HttpsError('not-found', 'Student not found.');
-  const existing = snap.data();
-  if (existing.used === true || existing.registeredUid) {
-    throw HttpsError('failed-precondition', 'Already registered students cannot be removed from the list.');
-  }
   await ref.delete();
   return { ok: true };
 });
