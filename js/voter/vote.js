@@ -16,6 +16,22 @@
     const userSnap = await DB.collection('users').doc(a.user.uid).get();
     const profile = userSnap.exists ? userSnap.data() : {};
 
+    // Voter-registration gate: login is always allowed, but the ballot
+    // opens only for registered voters (voterRegistered !== false).
+    // Missing field (legacy accounts) counts as registered.
+    if (profile.voterRegistered === false) {
+      let regMsg = 'Voter registration is currently closed.';
+      try {
+        const regSnap = await DB.collection('settings').doc('voterRegistration').get().catch(function () { return null; });
+        const reg = regSnap && regSnap.exists ? regSnap.data() : null;
+        if (reg && String(reg.status || '') === 'scheduled' && reg.startTime) {
+          regMsg = 'Voter registration opens ' + fmtDateTime(reg.startTime) + '.';
+        }
+      } catch (e) {}
+      $body.innerHTML = '<div class="alert alert-warn center">You must register as a voter before voting. ' + esc(regMsg) + ' Complete registration on your dashboard or ask an admin to register you.</div>';
+      return;
+    }
+
     election = await fetchActiveElection();
     if (!election) {
       // No active status — but a scheduled window may have just arrived

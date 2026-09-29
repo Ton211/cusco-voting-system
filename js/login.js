@@ -115,6 +115,9 @@
     }
     if (isAdmStyle && !password) {
       // No password yet: cannot sign in, pre-check only.
+      // First-time account/password setup is always allowed (even while
+      // voter registration is closed) — it only creates the login, it
+      // does not register the student as a voter.
       const st0 = await startPrecheck();
       if (st0 && st0.exists && !st0.alreadyRegistered) { showFirstTimer(); return; }
       if (st0 && !st0.exists) {
@@ -242,9 +245,10 @@
 
   // ---------------------------------------------------------------
   // First-time setup: the login panel checks the student list, then
-  // "Change Password" saves the chosen password (acts as the
-  // password change), confirms the voter registration and logs the
-  // student straight into their account.
+  // "Change Password" saves the chosen password and logs the student
+  // straight into their account. This only creates the login — it does
+  // NOT register them as a voter. Voter registration happens later on
+  // the dashboard while the admin's window is open (or by an admin).
   // ---------------------------------------------------------------
   const setupWrap = document.getElementById('firstSetup');
   const setupForm = document.getElementById('setupForm');

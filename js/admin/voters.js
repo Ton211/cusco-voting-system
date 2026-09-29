@@ -72,12 +72,16 @@
     $tbody.innerHTML = rows
       .sort(function (a, b) { return (a.createdAt ? b.createdAt.seconds - a.createdAt.seconds : 0) || (a.fullName || '').localeCompare(b.fullName || ''); })
       .map(function (u) {
+        const needsVoterReg = u.role === 'voter' && u.voterRegistered === false;
         const actionCell = readOnly
           ? '<button class="btn btn-ghost btn-sm" data-action="view" data-uid="' + esc(u.uid) + '">View</button>'
           : '<div class="row-actions">' +
             '<button class="btn btn-ghost btn-sm" data-action="view" data-uid="' + esc(u.uid) + '">View</button>' +
             '<button class="btn btn-outline btn-sm" data-action="edit" data-uid="' + esc(u.uid) + '">Edit</button>' +
             '<button class="btn btn-ghost btn-sm" data-action="reset" data-uid="' + esc(u.uid) + '">Reset</button>' +
+            (needsVoterReg
+              ? '<button class="btn btn-primary btn-sm" data-action="register-voter" data-uid="' + esc(u.uid) + '">Register as voter</button>'
+              : '') +
             '<button class="btn btn-sm ' + (u.status === 'inactive' ? 'btn-success-inline' : 'btn-danger-inline') + '" data-action="toggle" data-uid="' + esc(u.uid) + '">' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '</button>' +
             '</div>';
         return (
@@ -261,6 +265,7 @@
   function openView(uid) {
     const u = allUsers.find(function (x) { return x.uid === uid; });
     if (!u) return;
+    const canManualReg = !window.isReadOnly() && u.role === 'voter' && u.voterRegistered === false;
     $viewDetails.innerHTML =
       '<table class="data">' +
       '<tr><td><span class="muted">Full Name</span></td><td><strong>' + esc(u.fullName) + '</strong></td></tr>' +
@@ -271,8 +276,24 @@
       '<tr><td><span class="muted">Password</span></td><td>' + passwordBadge(u) + '</td></tr>' +
       '<tr><td><span class="muted">Status</span></td><td>' + statusBadge(u) + '</td></tr>' +
       '<tr><td><span class="muted">Registered</span></td><td>' + fmtDateTime(u.createdAt) + '</td></tr>' +
-      '</table>';
+      '</table>' +
+      (canManualReg ? '<div class="center mt-16"><button class="btn btn-primary btn-sm" id="manualRegBtn" type="button">Register as voter</button></div>' : '');
     openModal('viewModal');
+    const $mrb = document.getElementById('manualRegBtn');
+    if ($mrb) {
+      $mrb.addEventListener('click', async function () {
+        $mrb.disabled = true;
+        try {
+          await updateUser({ uid: uid, voterRegistered: true });
+          toast(u.fullName + ' is now registered as a voter.', 'success');
+          closeModal('viewModal');
+          await load();
+        } catch (err) {
+          toast(callFriendly(err).message, 'error');
+          $mrb.disabled = false;
+        }
+      });
+    }
   }
 
   function openEdit(uid) {
@@ -336,7 +357,8 @@
   });
 
   // ---------------------------------------------------------------
-  // Toggle active / deactivate
+  // Toggle active / deactivate + manual voter registration
+  // (admin bypasses the registration window).
   // ---------------------------------------------------------------
   $tbody.addEventListener('click', function (e) {
     const btn = e.target.closest('button[data-action]');
@@ -348,7 +370,22 @@
     else if (action === 'edit') openEdit(uid);
     else if (action === 'reset') openReset(uid);
     else if (action === 'toggle') toggleStatus(uid);
+    else if (action === 'register-voter') manualRegisterVoter(uid);
   });
+
+  async function manualRegisterVoter(uid) {
+    const u = allUsers.find(function (x) { return x.uid === uid; });
+    if (!u) return;
+    const ok = await confirmDialog({ title: 'Register voter', message: 'Manually register ' + u.fullName + ' as a voter? They will be able to vote without waiting for the registration window.', confirmText: 'Register' });
+    if (!ok) return;
+    try {
+      await updateUser({ uid: uid, voterRegistered: true });
+      toast(u.fullName + ' is now registered as a voter.', 'success');
+      await load();
+    } catch (err) {
+      toast(callFriendly(err).message, 'error');
+    }
+  }
 
   async function toggleStatus(uid) {
     const u = allUsers.find(function (x) { return x.uid === uid; });

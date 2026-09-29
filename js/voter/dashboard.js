@@ -70,9 +70,9 @@
     }
     regTarget = 0;
     if (status === 'scheduled' && startMs) {
-      return '<div class="card center mb-12"><span class="badge scheduled">Voter registration opens ' + esc(fmtDateTime(reg.startTime)) + '</span></div>';
+      return '<div class="card center mb-12"><span class="badge scheduled">Voter registration opens ' + esc(fmtDateTime(reg.startTime)) + '</span><p class="muted text-sm mt-16">You can log in as usual, but you cannot register as a voter or vote until registration opens.</p></div>';
     }
-    return '<div class="card center mb-12"><span class="badge closed">Voter registration is currently closed</span></div>';
+    return '<div class="card center mb-12"><span class="badge closed">Voter registration is currently closed</span><p class="muted text-sm mt-16">You can still log in, but you cannot register as a voter or vote until registration opens.</p></div>';
   }
 
   async function load() {
@@ -103,7 +103,12 @@
     });
 
     const votedIn = profile.votedIn || {};
-    const openUnvoted = elections.some(function (e) {
+    // Voting requires voter registration: accounts with
+    // voterRegistered === false can log in and see elections but get no
+    // Vote buttons until they register (window open) or an admin
+    // registers them. Missing field (legacy) counts as registered.
+    const isRegistered = profile.voterRegistered !== false;
+    const openUnvoted = isRegistered && elections.some(function (e) {
       return e.status === 'active' && isElectionOpen(e) && votedIn[e.id] !== true;
     });
 
@@ -119,9 +124,15 @@
     } else {
       html += elections.map(function (e) {
         const voted = votedIn[e.id] === true;
-        const actions = e.status === 'active' && isElectionOpen(e) && !voted
-          ? '<a class="btn btn-primary btn-sm" href="/voter/vote.html">Vote</a>'
-          : (voted ? '<span class="badge active">Voted</span>' : '');
+        const votable = e.status === 'active' && isElectionOpen(e) && !voted;
+        let actions = '';
+        if (votable && isRegistered) {
+          actions = '<a class="btn btn-primary btn-sm" href="/voter/vote.html">Vote</a>';
+        } else if (votable && !isRegistered) {
+          actions = '<span class="badge pending">Register as a voter to vote</span>';
+        } else if (voted) {
+          actions = '<span class="badge active">Voted</span>';
+        }
         return (
           '<div class="card" data-eid="' + esc(e.id) + '">' +
           '<div class="card-title">' +

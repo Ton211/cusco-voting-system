@@ -308,6 +308,9 @@ exports.registerUser = fn.https.onCall(async (data, context) => {
 // ---------------------------------------------------------------------
 //  updateUser
 //  Only a Super Admin may update profiles or activate/deactivate.
+//  voterRegistered may also be flipped here at any time (window
+//  bypass): this is how an admin manually registers a voter who signed
+//  up while the window was closed.
 // ---------------------------------------------------------------------
 exports.updateUser = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
@@ -352,6 +355,18 @@ exports.updateUser = fn.https.onCall(async (data, context) => {
       throw HttpsError('internal', 'Could not update account status: ' + err.message);
     }
     updates.status = status;
+  }
+
+  // Manual voter registration by an admin. Bypasses the registration
+  // window entirely (unlike registerAsVoter). Only meaningful for voter
+  // accounts; other roles reject.
+  if (data.voterRegistered !== undefined) {
+    const want = data.voterRegistered === true || String(data.voterRegistered).toLowerCase() === 'true';
+    const notWant = data.voterRegistered === false || String(data.voterRegistered).toLowerCase() === 'false';
+    if (!want && !notWant) throw HttpsError('invalid-argument', 'voterRegistered must be true or false.');
+    if ((target.role || 'voter') !== 'voter') throw HttpsError('failed-precondition', 'Only voter accounts can be registered as voters.');
+    updates.voterRegistered = want;
+    updates.voterRegisteredAt = want ? serverNow() : null;
   }
 
   if (Object.keys(updates).length) {
@@ -574,8 +589,14 @@ exports.deleteStudent = fn.https.onCall(async (data, context) => {
 
 // ---------------------------------------------------------------------
 //  selfRegisterVoter
-//  Public self signup guarded by the admin-imported studentList.
+//  Public self signup guarded by the admin-imported studentList ONLY.
 //  Adm must exist on the list and must not already have an account.
+//  This step is ALWAYS allowed: the student creates their login and
+//  sets their own password at any time. It does NOT make them a voter —
+//  the account is created with voterRegistered:false and they cannot
+//  register as a voter (registerAsVoter) or vote (createVote) until the
+//  admin's voter-registration window is open (or an admin registers
+//  them manually via registerUser / updateUser).
 // ---------------------------------------------------------------------
 exports.selfRegisterVoter = fn.https.onCall(async (data, context) => {
   verifyAppCheck(context);
@@ -1211,11 +1232,14 @@ exports.enforceElectionWindows = fn.pubsub.schedule('every 1 minutes').onRun(asy
 // ---------------------------------------------------------------------
 //  Voter registration window
 //  The Super Admin opens / schedules / closes voter registration
-//  (settings/voterRegistration doc). Students complete the separate
-//  "Register as a voter" step on their dashboard only while the window
-//  is open. First-time account setup (password) stays whitelist-based
-//  and is NOT gated by this window, so newcomers always reach their
-//  dashboard first.
+//  (settings/voterRegistration doc). Model:
+//   - Login + first-time account/password setup (selfRegisterVoter) is
+//     ALWAYS allowed (whitelist-based), window open or not.
+//   - Becoming a voter is gated: dashboard "Register as a voter"
+//     (registerAsVoter) succeeds only while the window is open, and
+//     voting (createVote) requires voterRegistered === true.
+//   - Admins bypass the window: registerUser creates voters already
+//     registered, and updateUser can flip voterRegistered manually.
 // ---------------------------------------------------------------------
 const REG_DOC = 'voterRegistration';
 
@@ -1393,6 +1417,14 @@ exports.createVote = fn.https.onCall(async (data, context) => {
 
     if (user.role !== 'voter') throw HttpsError('permission-denied', 'Only voters may cast a vote.');
     if (user.status !== 'active') throw HttpsError('failed-precondition', 'Your account is inactive.');
+    // Voter-registration gate: accounts created via self-signup start
+    // with voterRegistered:false and cannot vote until they complete the
+    // dashboard "Register as a voter" step while the window is open, or
+    // an admin registers them manually. Missing field (legacy accounts)
+    // counts as registered so nobody already in the system gets stuck.
+    if (user.voterRegistered === false) {
+      throw HttpsError('failed-precondition', 'You must register as a voter before voting. Complete voter registration first.');
+    }
     if (user.votedIn && user.votedIn[electionId]) {
       throw HttpsError('already-exists', 'You have already voted in this election.');
     }
