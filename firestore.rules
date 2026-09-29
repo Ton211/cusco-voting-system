@@ -32,6 +32,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Release gate: voters may read ONLY the election named in the
+    // release doc, and only after the admin has flipped it visible.
+    // get() yields null when the doc is missing -> denies by default,
+    // closing the global leak where ANY released flag exposed EVERY
+    // election's tally.
+    function resultsReleased(electionId) {
+      let vis = get(/databases/$(database)/documents/settings/resultsVisibility).data;
+      return vis != null
+        && vis.hideUntilClose == false
+        && vis.electionId == electionId;
+    }
+
     // Shape validation for the few collections clients are permitted to
     // write. The server (Admin SDK / Cloud Functions) bypasses rules
     // entirely, so these helpers only describe what the admin frontend
@@ -147,14 +159,18 @@ service cloud.firestore {
 
     // ------------------------------------------------------------------
     // Votes (aggregate results only)
-    // Written exclusively by the server-side createVote Cloud Function.
+    // Written exclusively by the server-side tallyVote trigger.
     // Clients can never write here -- even admins cannot forge ballots.
-    // Admins and voters may read the aggregates: the student portal
-    // shows the same Live graphs and Results as the admin side, so
-    // running tallies are visible to voters while voting is in progress.
+    // Admins may get + list (dashboards). Voters may GET only the single
+    // election named in settings/resultsVisibility once released
+    // (hideUntilClose == false AND electionId matches the wildcard).
+    // List is admin-only so voters cannot enumerate every tally.
+    // NOTE: this changes current behaviour (voters saw live counts
+    // mid-election). Voter Live/Results now require a release.
     // ------------------------------------------------------------------
     match /votes/{electionId} {
-      allow read: if isAdmin() || isVoter();
+      allow get: if isAdmin() || (isVoter() && resultsReleased(electionId));
+      allow list: if isAdmin();
       allow write: if false;
 
       // Individual ballots: server-only. Clients must never list, read
@@ -168,14 +184,11 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------------
-    // Settings
-    // Only the known settings document may be written (by admins), and
-    // its shape is pinned so arbitrary documents cannot be planted.
+    // Settings — NO generic /settings/{docId} match. Every settings doc
+    // is pinned explicitly; anything unlisted is denied by the global
+    // guard below. (The old generic `allow read: if isSignedIn()` leaked
+    // any parent-level config, including settings/staffAlias.)
     // ------------------------------------------------------------------
-    match /settings/{docId} {
-      allow read: if isSignedIn();
-    }
-
     function validSettingsWrite() {
       let data = request.resource.data;
       return data.keys().hasOnly(['hideUntilClose', 'electionId', 'updatedAt'])
@@ -187,6 +200,15 @@ service cloud.firestore {
     match /settings/resultsVisibility {
       allow get: if isSignedIn();
       allow write: if isSuperAdmin() && validSettingsWrite();
+    }
+
+    // Registration window: voter dashboard + ballot gate read this
+    // directly (js/voter/dashboard.js, js/voter/vote.js,
+    // js/admin/students.js). Writes are server-only via
+    // setVoterRegistration (Admin SDK bypasses rules).
+    match /settings/voterRegistration {
+      allow get: if isSignedIn();
+      allow write: if false;
     }
 
     // Staff username alias (e.g. CUSCO -> staff email). Written only by
