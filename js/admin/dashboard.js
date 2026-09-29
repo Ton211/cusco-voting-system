@@ -47,6 +47,10 @@
   }
 
   async function load() {
+    // Silent 2s tick guard: skip if a previous load is still running.
+    if (load._busy) return;
+    load._busy = true;
+    try {
     const [usersSnap, electionsSnap] = await Promise.all([
       DB.collection('users').where('role', '==', 'voter').get(),
       DB.collection('elections').get()
@@ -105,6 +109,9 @@
     nums[3].textContent = turnout + '%';
 
     renderList(electionStats(elections, castByElection, activeVoters));
+    } finally {
+      load._busy = false;
+    }
   }
 
   function renderList(rows) {
@@ -170,7 +177,11 @@
     // View-only staff see numbers only: no quick actions, no open/close.
     window.hideForReadOnly('#nextStepsCard');
     window.hideForReadOnly('#manageElectionsBtn');
-    load().then(function () { liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load, { minIntervalMs: 15000 }); }).catch(function (err) {
+    load().then(function () {
+      liveCollections([DB.collection('users').where('role', '==', 'voter'), DB.collection('elections'), DB.collection('candidates')], load, { minIntervalMs: 2000 });
+      // Silent 2s safety-net poll so vote counts stay correct without refresh.
+      if (typeof autoLive === 'function') autoLive(load, 2000);
+    }).catch(function (err) {
       $list.innerHTML = '<p class="muted">Could not load dashboard data.</p>';
       toast('Could not load dashboard: ' + friendlyError(err), 'error');
     });

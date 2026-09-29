@@ -46,11 +46,17 @@
   }
 
   async function load() {
+    if (load._busy) return;
+    load._busy = true;
+    try {
     try {
       const snap = await DB.collection('studentList').get();
       allStudents = snap.docs.map(function (doc) { return doc.data(); });
     } catch (e) { allStudents = []; }
     render($search ? $search.value : '');
+    } finally {
+      load._busy = false;
+    }
   }
 
   function parseStudentLines(text) {
@@ -355,7 +361,13 @@
     window.hideForReadOnly('#openAddBtn');
     window.hideForReadOnly('#openImportBtn');
     loadRegWindow();
-    return load().then(function () { liveCollections([DB.collection('studentList'), DB.collection('settings').doc('voterRegistration')], function () { load(); loadRegWindow(); }, { minIntervalMs: 15000 }); });
+    return load().then(function () {
+      function refreshAll() { load(); loadRegWindow(); }
+      liveCollections([DB.collection('studentList'), DB.collection('settings').doc('voterRegistration')], refreshAll, { minIntervalMs: 2000 });
+      // Silent 2s safety-net poll so registration states self-correct
+      // within ~2s even if a snapshot event is missed.
+      if (typeof autoLive === 'function') autoLive(refreshAll, 2000);
+    });
   }).catch(function (err) {
     toast('Could not load students: ' + friendlyError(err), 'error');
   });

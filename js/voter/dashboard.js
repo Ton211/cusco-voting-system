@@ -76,6 +76,10 @@
   }
 
   async function load() {
+    // Silent 2s tick guard: skip if a previous load is still running.
+    if (load._busy) return;
+    load._busy = true;
+    try {
     const a = window.__auth;
     if (!a.user) return;
 
@@ -150,6 +154,9 @@
 
     html += '</div>';
     $body.innerHTML = html;
+    } finally {
+      load._busy = false;
+    }
   }
 
   // One-tap voter registration (button is re-created on every render,
@@ -186,7 +193,9 @@
         refs.push(DB.collection('users').doc(uid));
         refs.push(DB.collection('users').doc(uid).collection('receipts'));
       }
-      liveCollections(refs, load);
+      liveCollections(refs, load, { minIntervalMs: 2000 });
+      // Silent 2s safety-net poll so election state stays correct without refresh.
+      if (typeof autoLive === 'function') autoLive(load, 2000);
     });
   }).catch(function (err) {
     $body.innerHTML = '<p class="muted center">Could not load elections: ' + esc(friendlyError(err)) + '</p>';

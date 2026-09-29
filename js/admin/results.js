@@ -7,6 +7,9 @@
   const $hideToggle = document.getElementById('hideUntilClose');
 
   let selectedElection = null;
+  // Silent 2s refresh guard: background ticks never overlap each other
+  // and never flash "Loading…" — numbers just update in place.
+  let refreshBusy = false;
 
   // ---------------------------------------------------------------
   // Election selector + results-visibility setting
@@ -76,6 +79,11 @@
   // Loading results
   // ---------------------------------------------------------------
   async function loadElection(electionId, silent) {
+    // Silent background tick: skip if a previous load is still running
+    // instead of stacking reads — the next 2s tick picks it up.
+    if (refreshBusy) return;
+    refreshBusy = true;
+    try {
     if (!silent) $body.innerHTML = '<div class="empty">Loading…</div>';
 
     // This same file powers the student portal Results page: voters
@@ -204,6 +212,9 @@
     html += '<div class="stat-grid">' + cards + '</div>';
 
     $body.innerHTML = html;
+    } finally {
+      refreshBusy = false;
+    }
   }
 
   $select.addEventListener('change', async function () {
@@ -229,7 +240,11 @@
       if ($hideToggle) $hideToggle.disabled = true;
     }
     await loadSelect();
-    // Real-time: votes, candidates, or settings changes re-render at once.
+    // Real-time: votes, candidates, or settings changes re-render at
+    // once, plus a silent 2s polling tick as a safety net so a vote from
+    // any student appears within ~2s even if a snapshot event is missed.
+    // Silent ticks never flash "Loading…" and never toast — numbers just
+    // update in place, so nobody needs to refresh manually.
     // The roster query is staff-only; voters cannot listen to it.
     const liveRefs = [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes'), DB.collection('settings').doc('resultsVisibility')];
     if (!(window.__auth && window.__auth.role === 'voter')) {
@@ -240,9 +255,16 @@
       function () {
         if (selectedElection) return loadElection(selectedElection.id, true);
       },
-      // Staff view also watches the whole voter roster: coalesce bursts.
-      { minIntervalMs: 10000 }
+      // Coalesce rapid vote bursts into one refresh every 2 seconds.
+      { minIntervalMs: 2000 }
     );
+    // Silent 2s safety-net poll: guarantees correct results ~2s after
+    // any vote. autoLive skips ticks while hidden / typing / dialog open.
+    if (typeof autoLive === 'function') {
+      autoLive(function () {
+        if (selectedElection) return loadElection(selectedElection.id, true);
+      }, 2000);
+    }
   }).catch(function (err) {
     toast('Could not load elections: ' + friendlyError(err), 'error');
   });

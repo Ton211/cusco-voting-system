@@ -2,7 +2,8 @@
 //  Admin: live voting graphs
 //  Position cards for the open election, each with its live bar graph
 //  embedded inline so results are visible immediately — no clicking.
-//  Graphs refresh in real time while voting is in progress.
+//  Graphs refresh silently every ~2 seconds while voting is in progress,
+//  so a vote cast by any student appears automatically — no manual refresh.
 //  Blank when no election is open.
 // =====================================================================
 (function () {
@@ -18,6 +19,9 @@
   let totalVotes = 0;
   let countdownTarget = 0;
   let countdownTimer = null;
+  // Silent 2s refresh guard: background ticks never overlap each other
+  // and never flash loading states — the graphs just update in place.
+  let refreshBusy = false;
 
   function posVotes(posId) {
     const m = results[posId] || {};
@@ -36,6 +40,11 @@
 
   async function refresh() {
     if (document.hidden) return;
+    // Silent tick: skip if a previous refresh is still running instead
+    // of stacking reads — the next 2s tick picks it up.
+    if (refreshBusy) return;
+    refreshBusy = true;
+    try {
     const [aSnap, sSnap] = await Promise.all([
       DB.collection('elections').where('status', '==', 'active').limit(1).get(),
       DB.collection('elections').where('status', '==', 'scheduled').get().catch(function () { return null; })
@@ -84,6 +93,9 @@
     totalVotes = vData.totalVotes || 0;
 
     renderLive();
+    } finally {
+      refreshBusy = false;
+    }
   }
 
   function renderBlank() {
@@ -248,11 +260,16 @@
   }
 
   // Real-time sync: snapshots refresh the inline graphs the moment
-  // votes change. The 1s countdown clock stays on its own timer.
+  // votes change, plus a silent 2s polling tick as a safety net so a
+  // vote from any student appears within ~2s even if a snapshot event
+  // is missed. Ticks are silent (no loading flash, no toasts) and skip
+  // while the tab is hidden, so nobody needs to refresh manually.
+  // The 1s countdown clock stays on its own timer.
   // Boundary watcher: within 30s of an open/close deadline, nudge the
   // election clock every 15s so the flip lands in seconds even if this
   // tab loaded after the countdown already passed.
   let boundaryTimer = null;
+  let silentTimerStop = null;
   function watchBoundary() {
     if (!countdownTarget) return;
     const gap = countdownTarget - Date.now();
@@ -276,14 +293,21 @@
       [DB.collection('elections'), DB.collection('positions'), DB.collection('candidates'), DB.collection('votes')],
       function () { return refresh().catch(function () {}); },
       // Graphs stay near-realtime, but a burst of votes coalesces into
-      // one refresh every few seconds instead of a re-read per vote.
-      { minIntervalMs: 5000 }
+      // one refresh every 2 seconds instead of a re-read per vote.
+      { minIntervalMs: 2000 }
     );
+    // Silent 2s safety-net poll: guarantees the board shows the correct
+    // results ~2s after any vote, with no manual refresh. autoLive skips
+    // ticks while hidden / typing / dialog open / a refresh is running.
+    if (typeof autoLive === 'function') {
+      silentTimerStop = autoLive(function () { return refresh().catch(function () {}); }, 2000);
+    }
     countdownTimer = setInterval(tickCountdown, 1000);
     boundaryTimer = setInterval(watchBoundary, 15000);
     window.addEventListener('beforeunload', function () {
       if (countdownTimer) clearInterval(countdownTimer);
       if (boundaryTimer) clearInterval(boundaryTimer);
+      if (silentTimerStop) { try { silentTimerStop(); } catch (e) {} }
     });
   });
 })();

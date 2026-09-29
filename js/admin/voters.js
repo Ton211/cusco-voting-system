@@ -116,13 +116,31 @@
       .join('');
   }
 
-  async function load() {
+  async function load(opts) {
+    // Background ticks (snapshots / 2s poll) never stack on each other.
+    // A post-write refresh passes { server: true }: it waits for any
+    // in-flight read, then forces a server read — with offline
+    // persistence on, a plain get() can serve the pre-write cache and
+    // paint the row back to "Not registered" right after a successful
+    // registration.
+    if (load._busy) {
+      if (!(opts && opts.server)) return;
+      let waited = 0;
+      while (load._busy && waited < 5000) {
+        await new Promise(function (r) { setTimeout(r, 100); });
+        waited += 100;
+      }
+      if (load._busy) return;
+    }
+    load._busy = true;
+    try {
     const $loadError = document.getElementById('loadError');
+    const getOpts = opts && opts.server ? { source: 'server' } : undefined;
     // Both lists are independent: one wave instead of two sequential
     // round-trips (matters most on high-latency connections).
     const [snap, sSnap] = await Promise.all([
-      DB.collection('users').get(),
-      DB.collection('studentList').get().catch(function () { return null; })
+      getOpts ? DB.collection('users').get(getOpts) : DB.collection('users').get(),
+      (getOpts ? DB.collection('studentList').get(getOpts) : DB.collection('studentList').get()).catch(function () { return null; })
     ]);
     try {
       allUsers = snap.docs.map(function (doc) {
@@ -140,6 +158,26 @@
     render($search.value);
     allStudents = sSnap ? sSnap.docs.map(function (doc) { return doc.data(); }) : [];
     renderStudents($studentSearch ? $studentSearch.value : '');
+    } finally {
+      load._busy = false;
+    }
+  }
+
+  // Flip one row's registration badge instantly (optimistic), so the
+  // list reacts the moment the admin confirms — the server re-read
+  // afterwards confirms it. Returns the previous value for rollback.
+  function flipLocalReg(uid, value) {
+    const u = allUsers.find(function (x) { return x.uid === uid; });
+    if (!u) return undefined;
+    const prev = u.voterRegistered;
+    u.voterRegistered = value;
+    render($search.value);
+    return prev;
+  }
+
+  function localRegOf(uid) {
+    const u = allUsers.find(function (x) { return x.uid === uid; });
+    return u ? u.voterRegistered : undefined;
   }
 
   function parseStudentLines(text) {
@@ -217,7 +255,7 @@
         toast('Staff registered. Email: ' + email, 'success');
       }
       closeModal('registerModal');
-      await load();
+      await load({ server: true }).catch(function () { return load(); });
     } catch (err) {
       const e = callFriendly(err);
       toast(e.message, 'error');
@@ -283,14 +321,23 @@
     if ($mrb) {
       $mrb.addEventListener('click', async function () {
         $mrb.disabled = true;
+        $mrb.textContent = 'Registering…';
+        flipLocalReg(uid, true);
         try {
           await updateUser({ uid: uid, voterRegistered: true });
-          toast(u.fullName + ' is now registered as a voter.', 'success');
+          // Server-forced re-read (bypasses the offline cache), then
+          // confirm the save actually landed before claiming success.
+          await load({ server: true }).catch(function () { return load(); });
+          if (localRegOf(uid) === false) {
+            toast('Server did not save the change. Redeploy Cloud Functions (npm run deploy:functions) and try again.', 'error');
+          } else {
+            toast(u.fullName + ' is now registered as a voter.', 'success');
+          }
           closeModal('viewModal');
-          await load();
+          render($search.value);
         } catch (err) {
+          await load().catch(function () {});
           toast(callFriendly(err).message, 'error');
-          $mrb.disabled = false;
         }
       });
     }
@@ -378,11 +425,22 @@
     if (!u) return;
     const ok = await confirmDialog({ title: 'Register voter', message: 'Manually register ' + u.fullName + ' as a voter? They will be able to vote without waiting for the registration window.', confirmText: 'Register' });
     if (!ok) return;
+    // Optimistic: the badge flips to Registered instantly; rolled back
+    // (via a fresh re-read) if the save fails.
+    flipLocalReg(uid, true);
     try {
       await updateUser({ uid: uid, voterRegistered: true });
-      toast(u.fullName + ' is now registered as a voter.', 'success');
-      await load();
+      // Server-forced re-read (bypasses the offline cache), then confirm
+      // the save actually landed before claiming success — a success toast
+      // with no list change means stale Cloud Functions on the server.
+      await load({ server: true }).catch(function () { return load(); });
+      if (localRegOf(uid) === false) {
+        toast('Server did not save the change. Redeploy Cloud Functions (npm run deploy:functions) and try again.', 'error');
+      } else {
+        toast(u.fullName + ' is now registered as a voter.', 'success');
+      }
     } catch (err) {
+      await load().catch(function () {});
       toast(callFriendly(err).message, 'error');
     }
   }
@@ -487,7 +545,12 @@
         '<option value="superadmin">Super Admin</option>';
     }
     plusActivateButtonsCss();
-    return load().then(function () { liveCollections([DB.collection('users'), DB.collection('studentList')], load, { minIntervalMs: 15000 }); });
+    return load().then(function () {
+      liveCollections([DB.collection('users'), DB.collection('studentList')], load, { minIntervalMs: 2000 });
+      // Silent 2s safety-net poll so the list self-corrects within ~2s
+      // even if a snapshot event is missed. Skips while typing/modal/hidden.
+      if (typeof autoLive === 'function') autoLive(load, 2000);
+    });
   }).catch(function (err) {
     toast('Could not load voters: ' + friendlyError(err), 'error');
   });

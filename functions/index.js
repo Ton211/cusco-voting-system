@@ -188,6 +188,27 @@ function syntheticEmailForAdm(adm) {
   return local + '@cusco.student';
 }
 
+// Best-effort mirror: when a voter account gains voterRegistered (manual
+// admin registration via updateUser, or an admin-created voter via
+// registerUser), flip the matching studentList entry to used so the
+// Students page agrees with the Voters page. Never throws: registration
+// must not fail because of a mirror write. Never creates entries: only
+// the admin import owns the whitelist.
+async function markStudentListUsed(adm, uid) {
+  try {
+    const norm = normalizeAdm(adm);
+    if (!norm) return;
+    const ref = db.collection('studentList').doc(admDocId(norm));
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const patch = { used: true };
+    if (uid) patch.registeredUid = uid;
+    await ref.set(patch, { merge: true });
+  } catch (e) {
+    try { console.warn('markStudentListUsed skipped:', e.message); } catch (x) {}
+  }
+}
+
 function isSyntheticEmail(email) {
   return typeof email === 'string' && email.toLowerCase().endsWith('@cusco.student');
 }
@@ -296,6 +317,11 @@ exports.registerUser = fn.https.onCall(async (data, context) => {
       passwordChangedAt: null,
       createdAt: serverNow()
     });
+    // Admin-enlisted voters count as registered straight away: mirror the
+    // whitelist flag so the Students page shows them as Registered too.
+    if (role === 'voter') {
+      await markStudentListUsed(voterId, uid);
+    }
   } catch (err) {
     // Roll back the Auth user if the profile write failed.
     admin.auth().deleteUser(uid).catch(function () {});
@@ -372,6 +398,11 @@ exports.updateUser = fn.https.onCall(async (data, context) => {
   if (Object.keys(updates).length) {
     updates.updatedAt = serverNow();
     await db.collection('users').doc(uid).update(updates);
+    // Manual voter registration: mirror the whitelist flag so the
+    // Students page shows them as Registered too.
+    if (updates.voterRegistered === true && (target.role || 'voter') === 'voter') {
+      await markStudentListUsed(target.admNumber || target.voterId, uid);
+    }
   }
 
   return { ok: true };
