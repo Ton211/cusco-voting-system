@@ -24,6 +24,15 @@ const fn = functions.region('us-central1');
 
 admin.initializeApp();
 
+// Prefer REST over gRPC for Firestore: smaller cold-start, faster warm-up,
+// no behavioral change. Must run before any Firestore use; guarded so an
+// older SDK never breaks deploy.
+try {
+  admin.firestore().settings({ preferRest: true });
+} catch (e) {
+  try { console.warn('preferRest unavailable:', e.message); } catch (x) {}
+}
+
 const db = admin.firestore();
 const inc = admin.firestore.FieldValue.increment;
 const serverNow = admin.firestore.FieldValue.serverTimestamp;
@@ -91,6 +100,7 @@ const RATE_LIMITS = {
   updateUser: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteUser: { windowMs: 60 * 60 * 1000, max: 30 },
   resetSystem: { windowMs: 60 * 60 * 1000, max: 5 },
+  rebuildTallies: { windowMs: 60 * 60 * 1000, max: 10 },
   saveElection: { windowMs: 60 * 60 * 1000, max: 60 },
   deleteElection: { windowMs: 60 * 60 * 1000, max: 30 },
   // Any signed-in voter may nudge the election clock at the boundary
@@ -969,6 +979,24 @@ exports.resetSystem = fn.https.onCall(async (data, context) => {
     return n;
   }
 
+  // Ballots live under votes/{electionId}/ballots/{ballotId} and are NOT
+  // removed by deleting the parent votes doc: wipe them first.
+  async function wipeBallots() {
+    let n = 0;
+    const votesSnap = await db.collection('votes').get();
+    for (const vDoc of votesSnap.docs) {
+      for (;;) {
+        const bSnap = await vDoc.ref.collection('ballots').limit(400).get();
+        if (bSnap.empty) break;
+        const batch = db.batch();
+        bSnap.docs.forEach(function (d) { batch.delete(d.ref); n++; });
+        await batch.commit();
+        if (bSnap.size < 400) break;
+      }
+    }
+    return n;
+  }
+
   // Voters first (login + profile + receipts); staff accounts untouched.
   for (;;) {
     const snap = await db.collection('users').where('role', '==', 'voter').limit(400).get();
@@ -996,6 +1024,7 @@ exports.resetSystem = fn.https.onCall(async (data, context) => {
   counts.elections = await wipeCollection(db.collection('elections'));
   counts.positions = await wipeCollection(db.collection('positions'));
   counts.candidates = await wipeCollection(db.collection('candidates'));
+  counts.ballots = await wipeBallots();
   counts.votes = await wipeCollection(db.collection('votes'));
   counts.students = await wipeCollection(db.collection('studentList'));
 
@@ -1117,11 +1146,16 @@ exports.deleteElection = fn.https.onCall(async (data, context) => {
 
   const posSnap = await db.collection('positions').where('electionId', '==', id).get();
   const candSnap = await db.collection('candidates').where('electionId', '==', id).get();
+  const ballotSnap = await db.collection('votes').doc(id).collection('ballots').limit(500).get().catch(function () { return { docs: [], empty: true }; });
   const batch = db.batch();
   batch.delete(ref);
   posSnap.docs.forEach(function (d) { batch.delete(d.ref); });
   candSnap.docs.forEach(function (d) { batch.delete(d.ref); });
   batch.delete(db.collection('votes').doc(id));
+  // Ballot docs live in a subcollection (not removed by deleting the
+  // parent). Remove the first page here; elections with >500 ballots
+  // finish via resetSystem paging or rebuildTallies cleanup.
+  (ballotSnap.docs || []).forEach(function (d) { batch.delete(d.ref); });
   await batch.commit();
   return { ok: true };
 });
@@ -1500,20 +1534,29 @@ exports.createVote = fn.https.onCall(async (data, context) => {
     }
 
     // ----- record the anonymised vote -------------------------------
-    // Nested maps (NOT dotted keys): set() stores dots literally,
-    // only update() parses them as paths.
-    const voteRef = db.collection('votes').doc(electionId);
-    const aggregate = {
-      totalVotes: inc(1),
-      updatedAt: serverNow(),
-      results: {}
-    };
+    // Each vote is a NEW, UNIQUE document in the ballots subcollection
+    // (auto-ID, no voter identity stored inside -> anonymous and
+    // recountable). This avoids the single-document hotspot that a
+    // direct increment on votes/{electionId} creates: Firestore caps a
+    // single doc at ~1 write/sec sustained, so hundreds of students
+    // voting at once would abort/retry/fail on one shared counter.
+    // Per-voter uniqueness is still enforced atomically in THIS
+    // transaction via users/{uid}.votedIn[electionId]; the live tally
+    // in votes/{electionId} is maintained asynchronously by the
+    // tallyVote onCreate trigger below, so vote submission stays fast
+    // (~1 user-doc write + 1 new-doc create, zero contention) and all
+    // existing readers of votes/{electionId} keep working unchanged.
+    const ballotRef = db.collection('votes').doc(electionId).collection('ballots').doc();
+    const selections = {};
     positions.forEach(function (pos) {
-      const candId = String(data.ballot[pos.id]);
-      if (!aggregate.results[pos.id]) aggregate.results[pos.id] = {};
-      aggregate.results[pos.id][candId] = inc(1);
+      selections[pos.id] = String(data.ballot[pos.id]);
     });
-    tx.set(voteRef, aggregate, { merge: true });
+    tx.set(ballotRef, {
+      electionId: electionId,
+      selections: selections,
+      createdAt: serverNow(),
+      tallied: false
+    });
 
     // ----- receipt (proves the vote, reveals nothing about choice) ---
     const receiptId = 'CUSCO-' + randomToken(3);
@@ -1534,6 +1577,101 @@ exports.createVote = fn.https.onCall(async (data, context) => {
   });
 
   return result;
+});
+
+// ---------------------------------------------------------------------
+//  tallyVote : background aggregator for unique ballot documents
+//
+//  Each createVote now writes one unique doc to
+//  votes/{electionId}/ballots/{autoId} (anonymous: no uid inside).
+//  This trigger folds that ballot into the cached aggregate at
+//  votes/{electionId} { totalVotes, results: { posId: { candId: n } } }
+//  which every frontend page already reads. Readers stay on ONE doc
+//  (fast, 1 read, live listener unchanged) while writers never contend.
+//
+//  Idempotency: triggers are at-least-once, so each ballot carries a
+//  `tallied` flag. The fold runs in a transaction: re-deliveries see
+//  tallied===true and skip, so a ballot is counted exactly once even
+//  on retry. Contention on the tally doc (if any burst remains) only
+//  delays the BACKGROUND count by a second or two -- the voter's
+//  submission itself already succeeded and never retries.
+// ---------------------------------------------------------------------
+exports.tallyVote = fn.firestore.document('votes/{electionId}/ballots/{ballotId}').onCreate(async (snap, context) => {
+  const electionId = context.params.electionId;
+  const ballotRef = snap.ref;
+  const data = snap.data() || {};
+  const selections = data.selections && typeof data.selections === 'object' ? data.selections : null;
+  if (!selections || !Object.keys(selections).length) {
+    // Malformed ballot: mark so it is never retried, do not count it.
+    await ballotRef.set({ tallied: true, tallyError: 'empty-selections' }, { merge: true }).catch(function () {});
+    return null;
+  }
+
+  const voteRef = db.collection('votes').doc(electionId);
+  await db.runTransaction(async (tx) => {
+    const ballotDoc = await tx.get(ballotRef);
+    if (!ballotDoc.exists) return;
+    if (ballotDoc.data().tallied === true) return; // duplicate delivery
+
+    // Nested maps (NOT dotted keys): set() stores dots literally,
+    // only update() parses them as paths.
+    const aggregate = {
+      totalVotes: inc(1),
+      updatedAt: serverNow(),
+      results: {}
+    };
+    Object.keys(selections).forEach(function (posId) {
+      const candId = String(selections[posId]);
+      if (!candId) return;
+      if (!aggregate.results[posId]) aggregate.results[posId] = {};
+      aggregate.results[posId][candId] = inc(1);
+    });
+    tx.set(voteRef, aggregate, { merge: true });
+    tx.set(ballotRef, { tallied: true, talliedAt: serverNow() }, { merge: true });
+  });
+  return null;
+});
+
+// ---------------------------------------------------------------------
+//  rebuildTallies (Super Admin only): recompute votes/{electionId}
+//  from its ballots subcollection. Use after deploys, after manual
+//  fixes, or as a periodic sanity check. Idempotent: wipes the cached
+//  aggregate and re-sums every ballot, so double-counts self-heal.
+// ---------------------------------------------------------------------
+exports.rebuildTallies = fn.https.onCall(async (data, context) => {
+  verifyAppCheck(context);
+  rateLimit('rebuildTallies', context.auth ? context.auth.uid : clientIp(context));
+  requireSuperAdmin(context);
+
+  const electionId = data && data.electionId ? String(data.electionId) : '';
+  const electionIds = electionId ? [electionId] : (await db.collection('elections').get()).docs.map(function (d) { return d.id; });
+
+  const out = {};
+  for (const eid of electionIds) {
+    const ballots = await db.collection('votes').doc(eid).collection('ballots').get();
+    const totals = {};
+    let count = 0;
+    ballots.docs.forEach(function (b) {
+      const sel = (b.data() && b.data().selections) || {};
+      if (!sel || !Object.keys(sel).length) return;
+      count++;
+      Object.keys(sel).forEach(function (posId) {
+        const candId = String(sel[posId]);
+        if (!candId) return;
+        if (!totals[posId]) totals[posId] = {};
+        totals[posId][candId] = (totals[posId][candId] || 0) + 1;
+      });
+    });
+    await db.collection('votes').doc(eid).set({
+      totalVotes: count,
+      results: totals,
+      updatedAt: serverNow(),
+      rebuiltAt: serverNow(),
+      ballotCount: count
+    }, { merge: true });
+    out[eid] = { totalVotes: count, ballots: ballots.size };
+  }
+  return { ok: true, elections: out };
 });
 
 // ---------------------------------------------------------------------

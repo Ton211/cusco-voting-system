@@ -156,6 +156,15 @@ service cloud.firestore {
     match /votes/{electionId} {
       allow read: if isAdmin() || isVoter();
       allow write: if false;
+
+      // Individual ballots: server-only. Clients must never list, read
+      // or write them (they hold per-vote selections; only the cached
+      // aggregate in votes/{electionId} is client-visible). The
+      // createVote/tallyVote Cloud Functions use the Admin SDK and
+      // bypass rules entirely.
+      match /ballots/{ballotId} {
+        allow read, write: if false;
+      }
     }
 
     // ------------------------------------------------------------------

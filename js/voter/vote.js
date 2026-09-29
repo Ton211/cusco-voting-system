@@ -84,6 +84,8 @@
 
     const candidatesSnap = await DB.collection('candidates')
       .where('electionId', '==', election.id)
+      .where('status', '==', 'active')
+      .limit(200)
       .get();
 
     const byPosition = {};
