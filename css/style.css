@@ -379,8 +379,8 @@ body[data-page="public"] .auth-page > * {
 .center-logo { font-weight: 800; letter-spacing: .06em; text-align: center; }
 .center-logo h1 { font-size: 22px; }
 .center-logo p { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .16em; margin-top: 4px; }
-.logo_img { width: 88px; height: 88px; display: block; margin: 0 auto 10px auto; background: #fff; object-fit: contain; }
-.center-logo .logo_img { width: 96px; height: 96px; }
+.logo_img { width: 88px; height: 88px; display: block; margin: 0 auto 10px auto; background: transparent; object-fit: contain; }
+.center-logo .logo_img { width: 96px; height: 96px; background: transparent; }
 .brand_with_logo { display: flex; align-items: center; gap: 10px; }
 .brand_with_logo .logo_img { width: 34px; height: 34px; margin: 0; flex: none; background: transparent; }
 .brand_text { line-height: 1.2; }
