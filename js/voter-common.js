@@ -133,7 +133,7 @@
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async function () {
-        const ok = await confirmDialog({ title: 'Log out', message: 'Log out of the CUSCO Voting System?', confirmText: 'Log Out' });
+        const ok = await confirmDialog({ title: 'Log out', message: 'Log out of the CUSCO Online Voting System?', confirmText: 'Log Out' });
         if (ok) {
           AUTH.signOut().then(function () { location.href = '/'; });
         }

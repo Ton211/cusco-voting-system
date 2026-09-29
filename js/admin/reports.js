@@ -251,7 +251,7 @@
     const c = cache;
     const e = c.election;
     const rows = [
-      ['CUSCO Voting System — Election Report (Users <-> Results)'],
+      ['CUSCO Online Voting System — Election Report (Users <-> Results)'],
       [],
       ['Metric', 'Value'],
       ['Registered voters', c.registered],
